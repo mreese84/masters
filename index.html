@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masters Leaderboard 2026</title>
+    <title>Masters Leaderboard 26</title>
     <style>
         :root {
             --primary: #107d57;
@@ -28,7 +28,7 @@
             margin-bottom: 20px; padding-bottom: 10px;
         }
 
-        .header h1 { text-transform: uppercase; letter-spacing: 4px; color: var(--primary); }
+        .header h1 { text-transform: uppercase; letter-spacing: 4px; color: var(--primary); font-size: 2.5rem; }
 
         .controls {
             width: 100%; max-width: 900px;
@@ -36,9 +36,9 @@
         }
 
         .search-container { position: relative; flex: 2; min-width: 250px; }
-        input, select, button { padding: 12px; border: 1px solid var(--border); border-radius: 4px; }
-        input { width: 100%; box-sizing: border-box; }
-        button { background-color: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; }
+        input, select, button { padding: 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.95rem; }
+        input { width: 100%; box-sizing: border-box; outline-color: var(--primary); }
+        button { background-color: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; padding: 0 25px; }
 
         .suggestions {
             position: absolute; background: white; border: 1px solid var(--border); width: 100%;
@@ -46,25 +46,28 @@
         }
 
         .suggestion-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; }
-        .suggestion-item:hover { background-color: var(--alt-bg); }
+        .suggestion-item:hover { background-color: var(--alt-bg); color: var(--primary); }
 
-        .leaderboard-container { width: 100%; max-width: 900px; border: 1px solid var(--border); }
+        .leaderboard-container { width: 100%; max-width: 900px; border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; background: white; }
         thead { background-color: var(--primary); color: white; }
-        th { text-transform: uppercase; padding: 15px; font-size: 0.8rem; }
-        td { padding: 14px 15px; border-bottom: 1px solid #eee; text-align: center; }
+        th { text-transform: uppercase; padding: 15px; font-size: 0.8rem; letter-spacing: 1px; }
+        td { padding: 14px 15px; border-bottom: 1px solid #eee; text-align: center; font-weight: 500; }
         tr:nth-child(even) { background-color: var(--alt-bg); }
 
-        .player-cell { text-align: left; font-weight: 700; }
+        .player-cell { text-align: left; font-weight: 700; color: #1a1a1a; }
         .flag-img { width: 28px; height: auto; border: 1px solid #ddd; vertical-align: middle; }
         .score-neg { color: var(--negative); font-weight: 800; }
-        .section-divider { background-color: #e8e8e8 !important; font-weight: bold; text-align: left; padding: 12px 15px; font-size: 0.75rem; text-transform: uppercase; }
-        .hidden { display: none; }
         
-        #debug-box { 
-            width: 100%; max-width: 900px; background: #ffeeee; border: 1px solid #ccaaaa; 
-            padding: 10px; margin-top: 20px; font-family: monospace; font-size: 11px; white-space: pre-wrap;
+        .section-divider { 
+            background-color: #e8e8e8 !important; 
+            font-weight: bold; text-align: left; 
+            padding: 12px 15px; font-size: 0.75rem; 
+            color: #444; text-transform: uppercase; 
         }
+        .status-scheduled { color: #888; font-style: italic; font-size: 0.85rem; }
+
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -79,7 +82,7 @@
             <div id="suggestions" class="suggestions hidden"></div>
         </div>
         <select id="countryFilter"><option value="">All Countries</option></select>
-        <button id="clearFilters">Clear</button>
+        <button id="clearFilters">Clear Filters</button>
     </div>
 
     <div class="leaderboard-container">
@@ -93,12 +96,10 @@
                 </tr>
             </thead>
             <tbody id="leaderboardBody">
-                <tr><td colspan="4">Connecting to Master's Data...</td></tr>
+                <tr><td colspan="4">Loading live leaderboard data...</td></tr>
             </tbody>
         </table>
     </div>
-
-    <div id="debug-box" class="hidden"></div>
 
     <script>
         let allAthletes = [];
@@ -106,35 +107,31 @@
         window.espnCallback = function(data) {
             const body = document.getElementById('leaderboardBody');
             try {
-                // FALLBACK LOGIC: Attempt to find competitors in various possible ESPN locations
-                let competitors = null;
-                if (data.events?.[0]?.competitions?.[0]?.competitors) {
-                    competitors = data.events[0].competitions[0].competitors;
-                } else if (data.competitors) {
-                    competitors = data.competitors;
-                } else if (data.leaderboard?.athletes) {
-                    competitors = data.leaderboard.athletes;
-                }
+                // Find the competitors list based on the snippet provided
+                const competitors = data.events?.[0]?.competitions?.[0]?.competitors || [];
+                
+                if (competitors.length === 0) throw new Error("No competitors found.");
 
-                if (!competitors) {
-                    throw new Error("Could not find competitor list in API response.");
-                }
-
-                allAthletes = competitors.map(item => {
-                    // Adapt to both "Competitor" and "Athlete" formats
-                    const athleteObj = item.athlete || item;
-                    const scoreObj = item.score || item.statistics?.[0] || {};
-                    const status = item.status?.type?.id || "1";
+                allAthletes = competitors.map(comp => {
+                    const athlete = comp.athlete;
+                    const rawScore = comp.score; // Based on snippet, "score": "-1"
                     
-                    const scoreVal = scoreObj.displayValue || scoreObj.value || "E";
-                    const hasStarted = status !== "1";
+                    // Logic to determine if they've started. 
+                    // Usually if score is a number or "E", they've started.
+                    const hasStarted = rawScore !== null && rawScore !== undefined && rawScore !== "";
+                    
+                    const scoreDisplay = hasStarted ? rawScore : "Scheduled";
+                    let scoreSort = 0;
+                    if (hasStarted) {
+                        scoreSort = (rawScore === "E" || rawScore === "Even") ? 0 : parseInt(rawScore);
+                    }
 
                     return {
-                        fullName: athleteObj.displayName || "Unknown",
-                        countryFlag: athleteObj.flag || "",
-                        countryName: athleteObj.birthPlace || "International",
-                        scoreDisplay: hasStarted ? scoreVal : "Scheduled",
-                        scoreSort: (scoreVal === "E" || !hasStarted) ? 0 : parseInt(scoreVal),
+                        fullName: athlete.fullName || athlete.displayName,
+                        countryFlag: athlete.flag?.href || "",
+                        countryName: athlete.flag?.alt || "International",
+                        scoreDisplay: scoreDisplay,
+                        scoreSort: scoreSort,
                         hasStarted: hasStarted
                     };
                 });
@@ -142,20 +139,14 @@
                 populateCountryFilter();
                 renderTable(allAthletes);
             } catch (e) {
-                console.error("Data Parse Error:", e);
-                body.innerHTML = `<tr><td colspan="4" style="color:red">Data found, but structure is unknown. See debug info below.</td></tr>`;
-                const debug = document.getElementById('debug-box');
-                debug.classList.remove('hidden');
-                debug.textContent = "DEBUG DATA:\n" + JSON.stringify(data, null, 2).substring(0, 2000);
+                console.error("Parsing Error:", e);
+                body.innerHTML = `<tr><td colspan="4" style="color:red; padding:20px;">Error parsing data. Please verify the Tournament ID.</td></tr>`;
             }
         };
 
         function init() {
             const script = document.createElement('script');
             script.src = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941?callback=espnCallback';
-            script.onerror = () => {
-                document.getElementById('leaderboardBody').innerHTML = `<tr><td colspan="4">Critical Error: Script failed to load.</td></tr>`;
-            };
             document.body.appendChild(script);
         }
 
@@ -163,19 +154,24 @@
             const body = document.getElementById('leaderboardBody');
             body.innerHTML = '';
             
+            // Split into started and not started
             const active = data.filter(a => a.hasStarted).sort((a, b) => a.scoreSort - b.scoreSort);
             const pending = data.filter(a => !a.hasStarted).sort((a, b) => a.fullName.localeCompare(b.fullName));
 
+            // Render Active with Standard Competition Ranking
             let currentRank = 1;
             active.forEach((athlete, index) => {
-                if (index > 0 && athlete.scoreSort > active[index-1].scoreSort) currentRank = index + 1;
+                if (index > 0 && athlete.scoreSort > active[index-1].scoreSort) {
+                    currentRank = index + 1;
+                }
                 body.appendChild(createRow(athlete, currentRank));
             });
 
+            // Render Pending
             if (pending.length > 0) {
-                const div = document.createElement('tr');
-                div.innerHTML = `<td colspan="4" class="section-divider">Not Yet Started</td>`;
-                body.appendChild(div);
+                const divider = document.createElement('tr');
+                divider.innerHTML = `<td colspan="4" class="section-divider">Yet to Tee Off</td>`;
+                body.appendChild(divider);
                 pending.forEach(a => body.appendChild(createRow(a, "-")));
             }
         }
@@ -183,11 +179,13 @@
         function createRow(athlete, rank) {
             const tr = document.createElement('tr');
             const isNeg = athlete.hasStarted && athlete.scoreSort < 0;
+            const scoreClass = isNeg ? 'score-neg' : (athlete.hasStarted ? '' : 'status-scheduled');
+            
             tr.innerHTML = `
                 <td>${rank}</td>
                 <td class="player-cell">${athlete.fullName}</td>
-                <td><img src="${athlete.countryFlag}" class="flag-img" onerror="this.style.display='none'"></td>
-                <td class="${isNeg ? 'score-neg' : ''}">${athlete.scoreDisplay}</td>
+                <td><img src="${athlete.countryFlag}" class="flag-img" alt="${athlete.countryName}" onerror="this.style.display='none'"></td>
+                <td class="${scoreClass}">${athlete.scoreDisplay}</td>
             `;
             return tr;
         }
@@ -195,6 +193,7 @@
         function populateCountryFilter() {
             const filter = document.getElementById('countryFilter');
             const countries = [...new Set(allAthletes.map(a => a.countryName))].filter(Boolean).sort();
+            filter.innerHTML = '<option value="">All Countries</option>';
             countries.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c; opt.textContent = c;
@@ -202,33 +201,42 @@
             });
         }
 
-        document.getElementById('playerSearch').addEventListener('input', (e) => {
+        // Search Suggestion Logic
+        const searchInput = document.getElementById('playerSearch');
+        const suggBox = document.getElementById('suggestions');
+
+        searchInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
-            const sugg = document.getElementById('suggestions');
-            if (!val) { sugg.classList.add('hidden'); return; }
+            if (!val) { suggBox.classList.add('hidden'); return; }
+
             const matches = allAthletes.filter(a => a.fullName.toLowerCase().includes(val));
-            sugg.innerHTML = '';
+            suggBox.innerHTML = '';
+            
             if (matches.length > 0) {
-                sugg.classList.remove('hidden');
+                suggBox.classList.remove('hidden');
                 matches.slice(0, 8).forEach(m => {
-                    const d = document.createElement('div');
-                    d.className = 'suggestion-item'; d.textContent = m.fullName;
-                    d.onclick = () => {
-                        document.getElementById('playerSearch').value = m.fullName;
-                        sugg.classList.add('hidden');
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    div.textContent = m.fullName;
+                    div.onclick = () => {
+                        searchInput.value = m.fullName;
+                        suggBox.classList.add('hidden');
                         renderTable([m]);
                     };
-                    sugg.appendChild(d);
+                    suggBox.appendChild(div);
                 });
+            } else {
+                suggBox.classList.add('hidden');
             }
         });
 
         document.getElementById('countryFilter').addEventListener('change', (e) => {
-            renderTable(e.target.value ? allAthletes.filter(a => a.countryName === e.target.value) : allAthletes);
+            const filtered = e.target.value ? allAthletes.filter(a => a.countryName === e.target.value) : allAthletes;
+            renderTable(filtered);
         });
 
         document.getElementById('clearFilters').addEventListener('click', () => {
-            document.getElementById('playerSearch').value = '';
+            searchInput.value = '';
             document.getElementById('countryFilter').value = '';
             renderTable(allAthletes);
         });
