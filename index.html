@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masters Leaderboard 26</title>
+    <title>Masters Leaderboard 2026</title>
     <style>
         :root {
             --primary: #107d57;
@@ -107,22 +107,22 @@
         window.espnCallback = function(data) {
             const body = document.getElementById('leaderboardBody');
             try {
-                // Find the competitors list based on the snippet provided
+                // Accessing competitors via the specific endpoint structure
                 const competitors = data.events?.[0]?.competitions?.[0]?.competitors || [];
                 
                 if (competitors.length === 0) throw new Error("No competitors found.");
 
                 allAthletes = competitors.map(comp => {
                     const athlete = comp.athlete;
-                    const rawScore = comp.score; // Based on snippet, "score": "-1"
+                    const rawScore = comp.score; 
                     
-                    // Logic to determine if they've started. 
-                    // Usually if score is a number or "E", they've started.
+                    // Logic to determine if they've started based on the presence of a score string
                     const hasStarted = rawScore !== null && rawScore !== undefined && rawScore !== "";
                     
                     const scoreDisplay = hasStarted ? rawScore : "Scheduled";
                     let scoreSort = 0;
                     if (hasStarted) {
+                        // "E" or "Even" counts as 0, otherwise parse the integer (handles negative signs)
                         scoreSort = (rawScore === "E" || rawScore === "Even") ? 0 : parseInt(rawScore);
                     }
 
@@ -140,13 +140,14 @@
                 renderTable(allAthletes);
             } catch (e) {
                 console.error("Parsing Error:", e);
-                body.innerHTML = `<tr><td colspan="4" style="color:red; padding:20px;">Error parsing data. Please verify the Tournament ID.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="4" style="color:red; padding:20px;">Error parsing live data. Tournament ID: 401811941</td></tr>`;
             }
         };
 
         function init() {
             const script = document.createElement('script');
-            script.src = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941?callback=espnCallback';
+            // Using the requested URL with JSONP callback
+            script.src = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941';
             document.body.appendChild(script);
         }
 
@@ -154,11 +155,10 @@
             const body = document.getElementById('leaderboardBody');
             body.innerHTML = '';
             
-            // Split into started and not started
+            // Standard Rank Calculation
             const active = data.filter(a => a.hasStarted).sort((a, b) => a.scoreSort - b.scoreSort);
             const pending = data.filter(a => !a.hasStarted).sort((a, b) => a.fullName.localeCompare(b.fullName));
 
-            // Render Active with Standard Competition Ranking
             let currentRank = 1;
             active.forEach((athlete, index) => {
                 if (index > 0 && athlete.scoreSort > active[index-1].scoreSort) {
@@ -167,10 +167,9 @@
                 body.appendChild(createRow(athlete, currentRank));
             });
 
-            // Render Pending
             if (pending.length > 0) {
                 const divider = document.createElement('tr');
-                divider.innerHTML = `<td colspan="4" class="section-divider">Yet to Tee Off</td>`;
+                divider.innerHTML = `<td colspan="4" class="section-divider">Not Yet Started</td>`;
                 body.appendChild(divider);
                 pending.forEach(a => body.appendChild(createRow(a, "-")));
             }
@@ -201,7 +200,6 @@
             });
         }
 
-        // Search Suggestion Logic
         const searchInput = document.getElementById('playerSearch');
         const suggBox = document.getElementById('suggestions');
 
