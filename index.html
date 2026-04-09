@@ -182,10 +182,10 @@
             letter-spacing: 1.5px;
         }
 
-        thead th:nth-child(1) { text-align: center; width: 10%; }
-        thead th:nth-child(2) { text-align: left; width: 50%; }
-        thead th:nth-child(3) { text-align: center; width: 20%; }
-        thead th:nth-child(4) { text-align: center; width: 20%; }
+        .leaderboard thead th:nth-child(1) { text-align: center; width: 10%; }
+        .leaderboard thead th:nth-child(2) { text-align: left; width: 50%; }
+        .leaderboard thead th:nth-child(3) { text-align: center; width: 20%; }
+        .leaderboard thead th:nth-child(4) { text-align: center; width: 20%; }
 
         tbody tr { transition: background 0.15s; }
         tbody tr:nth-child(even) { background: var(--alt-bg); }
@@ -198,20 +198,20 @@
             font-size: 0.92rem;
         }
 
-        td:nth-child(1) {
+        .leaderboard td:nth-child(1) {
             text-align: center;
             font-weight: 700;
             color: var(--primary);
         }
 
-        td:nth-child(2) {
+        .leaderboard td:nth-child(2) {
             text-align: left;
             font-weight: 700;
             color: #1a1a1a;
         }
 
-        td:nth-child(3) { text-align: center; }
-        td:nth-child(4) {
+        .leaderboard td:nth-child(3) { text-align: center; }
+        .leaderboard td:nth-child(4) {
             text-align: center;
             font-weight: 700;
         }
@@ -334,11 +334,12 @@
 
         .scorecard-table th,
         .scorecard-table td {
-            padding: 10px 6px;
+            padding: 8px 2px;
             text-align: center;
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-            font-size: 0.82rem;
+            font-size: 0.78rem;
             border: 1px solid #eee;
+            overflow: hidden;
         }
 
         .scorecard-table th {
@@ -381,9 +382,11 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 26px;
-            height: 26px;
+            width: 22px;
+            height: 22px;
             font-weight: 700;
+            font-size: 0.75rem;
+            line-height: 1;
         }
 
         .score-indicator.birdie {
@@ -394,7 +397,7 @@
         .score-indicator.eagle {
             border: 2px solid #004085;
             border-radius: 50%;
-            box-shadow: 0 0 0 3px #fff, 0 0 0 5px #004085;
+            box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #004085;
         }
 
         .score-indicator.bogey {
@@ -403,7 +406,7 @@
 
         .score-indicator.double-bogey {
             border: 2px solid #721c24;
-            box-shadow: 0 0 0 3px #fff, 0 0 0 5px #721c24;
+            box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #721c24;
         }
 
         .no-hole-data {
@@ -420,8 +423,8 @@
             td, th { padding: 10px 8px; font-size: 0.82rem; }
             .flag { width: 22px; }
             .scorecard-table th,
-            .scorecard-table td { padding: 6px 3px; font-size: 0.72rem; }
-            .score-indicator { width: 22px; height: 22px; }
+            .scorecard-table td { padding: 6px 1px; font-size: 0.68rem; }
+            .score-indicator { width: 18px; height: 18px; font-size: 0.65rem; }
         }
     </style>
 </head>
@@ -760,6 +763,39 @@
         // ── Augusta National par values ──
         var augustaPars = [4, 5, 4, 3, 4, 3, 4, 5, 4, 4, 4, 3, 5, 4, 5, 3, 4, 4];
 
+        // ── Compute field averages per round per hole ──
+        function computeFieldAverages() {
+            // Returns array of rounds, each round is an array of 18 { sum, count, avg }
+            var maxRounds = 0;
+            allAthletes.forEach(function(a) {
+                if (a.linescores && a.linescores.length > maxRounds) maxRounds = a.linescores.length;
+            });
+            var avgs = [];
+            for (var r = 0; r < maxRounds; r++) {
+                var roundAvgs = [];
+                for (var h = 0; h < 18; h++) {
+                    roundAvgs.push({ sum: 0, count: 0, avg: 0 });
+                }
+                allAthletes.forEach(function(a) {
+                    if (!a.linescores || !a.linescores[r]) return;
+                    var holes = a.linescores[r].linescores || [];
+                    for (var h = 0; h < Math.min(holes.length, 18); h++) {
+                        if (!holes[h]) continue;
+                        var val = holes[h].value !== undefined ? holes[h].value : parseInt(holes[h].displayValue, 10);
+                        if (!isNaN(val) && val > 0) {
+                            roundAvgs[h].sum += val;
+                            roundAvgs[h].count++;
+                        }
+                    }
+                });
+                roundAvgs.forEach(function(ha) {
+                    ha.avg = ha.count > 0 ? (ha.sum / ha.count) : 0;
+                });
+                avgs.push(roundAvgs);
+            }
+            return avgs;
+        }
+
         // ── Scorecard view ──
         function showScorecard(name) {
             var athlete = allAthletes.find(function(a) { return a.name === name; });
@@ -789,9 +825,12 @@
                 return;
             }
 
+            var fieldAvgs = computeFieldAverages();
+
             rounds.forEach(function(round, rIdx) {
                 var holes = round.linescores || [];
                 var roundScore = round.displayValue || round.value || '';
+                var roundAvgs = fieldAvgs[rIdx] || [];
 
                 html += '<div class="round-label">Round ' + (rIdx + 1);
                 if (roundScore) html += ' &mdash; ' + roundScore;
@@ -803,18 +842,18 @@
                 }
 
                 // Front 9
-                html += buildNineHoles(holes, 0, 9, augustaPars, 'OUT', rIdx);
+                html += buildNineHoles(holes, 0, 9, augustaPars, 'OUT', rIdx, roundAvgs);
 
                 // Back 9
                 if (holes.length > 9) {
-                    html += buildNineHoles(holes, 9, Math.min(holes.length, 18), augustaPars, 'IN', rIdx);
+                    html += buildNineHoles(holes, 9, Math.min(holes.length, 18), augustaPars, 'IN', rIdx, roundAvgs);
                 }
             });
 
             content.innerHTML = html;
         }
 
-        function buildNineHoles(holes, start, end, pars, label, roundIdx) {
+        function buildNineHoles(holes, start, end, pars, label, roundIdx, roundAvgs) {
             var html = '<div class="scorecard-table"><table>';
 
             // Header row (hole numbers)
@@ -841,6 +880,11 @@
             var scoreTotal = 0;
             var hasScores = false;
             for (var i = start; i < end; i++) {
+                var avgInfo = roundAvgs && roundAvgs[i] ? roundAvgs[i] : null;
+                var tooltip = '';
+                if (avgInfo && avgInfo.count > 0) {
+                    tooltip = ' title="Field avg: ' + avgInfo.avg.toFixed(2) + '"';
+                }
                 if (i < holes.length && holes[i]) {
                     var val = holes[i].value !== undefined ? holes[i].value : parseInt(holes[i].displayValue, 10);
                     if (isNaN(val)) val = 0;
@@ -854,15 +898,15 @@
                         else if (val === par + 1) cls = 'bogey';
                         else if (val >= par + 2) cls = 'double-bogey';
                         if (cls) {
-                            html += '<td><span class="score-indicator ' + cls + '">' + val + '</span></td>';
+                            html += '<td' + tooltip + '><span class="score-indicator ' + cls + '">' + val + '</span></td>';
                         } else {
-                            html += '<td>' + val + '</td>';
+                            html += '<td' + tooltip + '>' + val + '</td>';
                         }
                     } else {
-                        html += '<td></td>';
+                        html += '<td' + tooltip + '></td>';
                     }
                 } else {
-                    html += '<td></td>';
+                    html += '<td' + tooltip + '></td>';
                 }
             }
             html += '<td class="total-col">' + (hasScores ? scoreTotal : '') + '</td>';
