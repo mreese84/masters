@@ -18,43 +18,27 @@
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
             background-color: var(--bg);
             color: var(--text);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
         }
 
         .header {
-            width: 100%;
-            max-width: 900px;
-            text-align: center;
+            width: 100%; max-width: 900px; text-align: center;
             border-bottom: 4px solid var(--primary);
-            margin-bottom: 20px;
-            padding-bottom: 10px;
+            margin-bottom: 20px; padding-bottom: 10px;
         }
 
-        .header h1 {
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            margin: 10px 0;
-            font-size: 2.5rem;
-            color: var(--primary);
-        }
+        .header h1 { text-transform: uppercase; letter-spacing: 4px; color: var(--primary); }
 
         .controls {
-            width: 100%;
-            max-width: 900px;
-            display: flex;
-            gap: 15px;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
+            width: 100%; max-width: 900px;
+            display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap;
         }
 
         .search-container { position: relative; flex: 2; min-width: 250px; }
-        input, select, button { padding: 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.95rem; outline-color: var(--primary); }
+        input, select, button { padding: 12px; border: 1px solid var(--border); border-radius: 4px; }
         input { width: 100%; box-sizing: border-box; }
-        button { background-color: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; padding: 0 25px; }
+        button { background-color: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; }
 
         .suggestions {
             position: absolute; background: white; border: 1px solid var(--border); width: 100%;
@@ -67,26 +51,20 @@
         .leaderboard-container { width: 100%; max-width: 900px; border: 1px solid var(--border); }
         table { width: 100%; border-collapse: collapse; background: white; }
         thead { background-color: var(--primary); color: white; }
-        th { text-transform: uppercase; padding: 15px; font-size: 0.8rem; letter-spacing: 1px; }
+        th { text-transform: uppercase; padding: 15px; font-size: 0.8rem; }
         td { padding: 14px 15px; border-bottom: 1px solid #eee; text-align: center; }
         tr:nth-child(even) { background-color: var(--alt-bg); }
 
-        .player-cell { text-align: left; font-weight: 700; color: #1a1a1a; }
+        .player-cell { text-align: left; font-weight: 700; }
         .flag-img { width: 28px; height: auto; border: 1px solid #ddd; vertical-align: middle; }
         .score-neg { color: var(--negative); font-weight: 800; }
-        
-        .section-divider { 
-            background-color: #e8e8e8 !important; 
-            font-weight: bold; 
-            text-align: left; 
-            padding: 12px 15px; 
-            font-size: 0.75rem; 
-            color: #444; 
-            text-transform: uppercase; 
-        }
-        .status-scheduled { color: #888; font-style: italic; font-size: 0.85rem; }
-
+        .section-divider { background-color: #e8e8e8 !important; font-weight: bold; text-align: left; padding: 12px 15px; font-size: 0.75rem; text-transform: uppercase; }
         .hidden { display: none; }
+        
+        #debug-box { 
+            width: 100%; max-width: 900px; background: #ffeeee; border: 1px solid #ccaaaa; 
+            padding: 10px; margin-top: 20px; font-family: monospace; font-size: 11px; white-space: pre-wrap;
+        }
     </style>
 </head>
 <body>
@@ -115,30 +93,46 @@
                 </tr>
             </thead>
             <tbody id="leaderboardBody">
-                <tr><td colspan="4">Loading live tournament data via JSONP...</td></tr>
+                <tr><td colspan="4">Connecting to Master's Data...</td></tr>
             </tbody>
         </table>
     </div>
 
+    <div id="debug-box" class="hidden"></div>
+
     <script>
         let allAthletes = [];
 
-        // Function called by the JSONP callback
         window.espnCallback = function(data) {
+            const body = document.getElementById('leaderboardBody');
             try {
-                if (!data.events || !data.events[0]) throw new Error("No event data found.");
-                
-                const competitors = data.events[0].competitions[0].competitors;
-                
-                allAthletes = competitors.map(comp => {
-                    // Status ID "1" usually means "Scheduled"
-                    const hasStarted = comp.status.type.id !== "1";
-                    const scoreVal = comp.score?.displayValue || "--";
+                // FALLBACK LOGIC: Attempt to find competitors in various possible ESPN locations
+                let competitors = null;
+                if (data.events?.[0]?.competitions?.[0]?.competitors) {
+                    competitors = data.events[0].competitions[0].competitors;
+                } else if (data.competitors) {
+                    competitors = data.competitors;
+                } else if (data.leaderboard?.athletes) {
+                    competitors = data.leaderboard.athletes;
+                }
+
+                if (!competitors) {
+                    throw new Error("Could not find competitor list in API response.");
+                }
+
+                allAthletes = competitors.map(item => {
+                    // Adapt to both "Competitor" and "Athlete" formats
+                    const athleteObj = item.athlete || item;
+                    const scoreObj = item.score || item.statistics?.[0] || {};
+                    const status = item.status?.type?.id || "1";
                     
+                    const scoreVal = scoreObj.displayValue || scoreObj.value || "E";
+                    const hasStarted = status !== "1";
+
                     return {
-                        fullName: comp.athlete.displayName,
-                        countryFlag: comp.athlete.flag,
-                        countryName: comp.athlete.birthPlace || "International",
+                        fullName: athleteObj.displayName || "Unknown",
+                        countryFlag: athleteObj.flag || "",
+                        countryName: athleteObj.birthPlace || "International",
                         scoreDisplay: hasStarted ? scoreVal : "Scheduled",
                         scoreSort: (scoreVal === "E" || !hasStarted) ? 0 : parseInt(scoreVal),
                         hasStarted: hasStarted
@@ -148,18 +142,19 @@
                 populateCountryFilter();
                 renderTable(allAthletes);
             } catch (e) {
-                console.error("JSONP Data Error:", e);
-                document.getElementById('leaderboardBody').innerHTML = `<tr><td colspan="4" style="color:red">Error parsing tournament data.</td></tr>`;
+                console.error("Data Parse Error:", e);
+                body.innerHTML = `<tr><td colspan="4" style="color:red">Data found, but structure is unknown. See debug info below.</td></tr>`;
+                const debug = document.getElementById('debug-box');
+                debug.classList.remove('hidden');
+                debug.textContent = "DEBUG DATA:\n" + JSON.stringify(data, null, 2).substring(0, 2000);
             }
         };
 
-        // Initialize by injecting a script tag (JSONP method)
         function init() {
             const script = document.createElement('script');
-            // ESPN's API supports a "callback" parameter which bypasses CORS
             script.src = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941?callback=espnCallback';
-            script.onerror = function() {
-                document.getElementById('leaderboardBody').innerHTML = `<tr><td colspan="4" style="color:red">Failed to reach ESPN. Tournament ID may be invalid or expired.</td></tr>`;
+            script.onerror = () => {
+                document.getElementById('leaderboardBody').innerHTML = `<tr><td colspan="4">Critical Error: Script failed to load.</td></tr>`;
             };
             document.body.appendChild(script);
         }
@@ -173,32 +168,28 @@
 
             let currentRank = 1;
             active.forEach((athlete, index) => {
-                if (index > 0 && athlete.scoreSort > active[index-1].scoreSort) {
-                    currentRank = index + 1;
-                }
+                if (index > 0 && athlete.scoreSort > active[index-1].scoreSort) currentRank = index + 1;
                 body.appendChild(createRow(athlete, currentRank));
             });
 
             if (pending.length > 0) {
-                const divider = document.createElement('tr');
-                divider.innerHTML = `<td colspan="4" class="section-divider">Not Yet Started</td>`;
-                body.appendChild(divider);
-                pending.forEach(athlete => body.appendChild(createRow(athlete, "-")));
+                const div = document.createElement('tr');
+                div.innerHTML = `<td colspan="4" class="section-divider">Not Yet Started</td>`;
+                body.appendChild(div);
+                pending.forEach(a => body.appendChild(createRow(a, "-")));
             }
         }
 
         function createRow(athlete, rank) {
-            const row = document.createElement('tr');
-            const isNegative = athlete.hasStarted && athlete.scoreSort < 0;
-            const scoreClass = isNegative ? 'score-neg' : (athlete.hasStarted ? '' : 'status-scheduled');
-            
-            row.innerHTML = `
+            const tr = document.createElement('tr');
+            const isNeg = athlete.hasStarted && athlete.scoreSort < 0;
+            tr.innerHTML = `
                 <td>${rank}</td>
                 <td class="player-cell">${athlete.fullName}</td>
-                <td><img src="${athlete.countryFlag}" class="flag-img" alt="flag" onerror="this.style.visibility='hidden'"></td>
-                <td class="${scoreClass}">${athlete.scoreDisplay}</td>
+                <td><img src="${athlete.countryFlag}" class="flag-img" onerror="this.style.display='none'"></td>
+                <td class="${isNeg ? 'score-neg' : ''}">${athlete.scoreDisplay}</td>
             `;
-            return row;
+            return tr;
         }
 
         function populateCountryFilter() {
@@ -211,34 +202,29 @@
             });
         }
 
-        // Search and filter event listeners
         document.getElementById('playerSearch').addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
-            const suggestions = document.getElementById('suggestions');
-            if (!val) { suggestions.classList.add('hidden'); return; }
-
+            const sugg = document.getElementById('suggestions');
+            if (!val) { sugg.classList.add('hidden'); return; }
             const matches = allAthletes.filter(a => a.fullName.toLowerCase().includes(val));
-            suggestions.innerHTML = '';
-            
+            sugg.innerHTML = '';
             if (matches.length > 0) {
-                suggestions.classList.remove('hidden');
+                sugg.classList.remove('hidden');
                 matches.slice(0, 8).forEach(m => {
-                    const div = document.createElement('div');
-                    div.className = 'suggestion-item';
-                    div.textContent = m.fullName;
-                    div.onclick = () => {
+                    const d = document.createElement('div');
+                    d.className = 'suggestion-item'; d.textContent = m.fullName;
+                    d.onclick = () => {
                         document.getElementById('playerSearch').value = m.fullName;
-                        suggestions.classList.add('hidden');
+                        sugg.classList.add('hidden');
                         renderTable([m]);
                     };
-                    suggestions.appendChild(div);
+                    sugg.appendChild(d);
                 });
             }
         });
 
         document.getElementById('countryFilter').addEventListener('change', (e) => {
-            const filtered = e.target.value ? allAthletes.filter(a => a.countryName === e.target.value) : allAthletes;
-            renderTable(filtered);
+            renderTable(e.target.value ? allAthletes.filter(a => a.countryName === e.target.value) : allAthletes);
         });
 
         document.getElementById('clearFilters').addEventListener('click', () => {
