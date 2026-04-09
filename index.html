@@ -183,11 +183,15 @@
             letter-spacing: 1.5px;
         }
 
-        .leaderboard thead th:nth-child(1) { text-align: center; width: 8%; }
-        .leaderboard thead th:nth-child(2) { text-align: left; width: 40%; }
-        .leaderboard thead th:nth-child(3) { text-align: center; width: 18%; }
-        .leaderboard thead th:nth-child(4) { text-align: center; width: 17%; }
-        .leaderboard thead th:nth-child(5) { text-align: center; width: 17%; }
+        .leaderboard thead th:nth-child(1) { text-align: center; width: 6%; }
+        .leaderboard thead th:nth-child(2) { text-align: left; width: 24%; }
+        .leaderboard thead th:nth-child(3) { text-align: center; width: 14%; }
+        .leaderboard thead th:nth-child(4) { text-align: center; width: 10%; }
+        .leaderboard thead th:nth-child(5) { text-align: center; width: 7%; }
+        .leaderboard thead th:nth-child(6) { text-align: center; width: 7%; }
+        .leaderboard thead th:nth-child(7) { text-align: center; width: 7%; }
+        .leaderboard thead th:nth-child(8) { text-align: center; width: 7%; }
+        .leaderboard thead th:nth-child(9) { text-align: center; width: 7%; }
 
         tbody tr { transition: background 0.15s; }
         tbody tr:nth-child(even) { background: var(--alt-bg); }
@@ -218,6 +222,10 @@
             font-weight: 700;
         }
         .leaderboard td:nth-child(5) { text-align: center; }
+        .leaderboard td:nth-child(6) { text-align: center; }
+        .leaderboard td:nth-child(7) { text-align: center; }
+        .leaderboard td:nth-child(8) { text-align: center; }
+        .leaderboard td:nth-child(9) { text-align: center; }
 
         .flag {
             width: 28px;
@@ -226,6 +234,15 @@
             border-radius: 2px;
             vertical-align: middle;
         }
+
+        .player-flag {
+            display: none;
+            margin-right: 6px;
+            width: 22px;
+        }
+
+        .short-name { display: none; }
+        .full-name { display: inline; }
 
         .score-neg { color: var(--negative); font-weight: 800; }
 
@@ -458,8 +475,18 @@
         @media (max-width: 600px) {
             .controls { flex-direction: column; }
             .header h1 { font-size: 1.6rem; letter-spacing: 3px; }
-            td, th { padding: 10px 8px; font-size: 0.82rem; }
+            td, th { padding: 10px 6px; font-size: 0.78rem; }
             .flag { width: 22px; }
+
+            /* Hide country column, show flag inline with name */
+            .country-col,
+            .leaderboard thead th:nth-child(3) { display: none; }
+            .player-flag { display: inline; }
+
+            /* Use short names */
+            .full-name { display: none; }
+            .short-name { display: inline; }
+
             .scorecard-table th,
             .scorecard-table td { padding: 6px 1px; font-size: 0.68rem; }
             .score-indicator { width: 18px; height: 18px; font-size: 0.65rem; }
@@ -490,13 +517,17 @@
                 <tr>
                     <th>Pos</th>
                     <th>Player</th>
-                    <th>Country</th>
+                    <th class="country-col">Country</th>
                     <th>Score</th>
+                    <th>R1</th>
+                    <th>R2</th>
+                    <th>R3</th>
+                    <th>R4</th>
                     <th>Thru</th>
                 </tr>
             </thead>
             <tbody id="tbody">
-                <tr class="loading"><td colspan="5">Loading leaderboard…</td></tr>
+                <tr class="loading"><td colspan="9">Loading leaderboard…</td></tr>
             </tbody>
         </table>
     </div>
@@ -571,7 +602,7 @@
             const script = document.createElement('script');
             script.src = API_URL + '?callback=' + cbName;
             script.onerror = function () {
-                tbody.innerHTML = '<tr class="no-results"><td colspan="5">Failed to load data from ESPN.</td></tr>';
+                tbody.innerHTML = '<tr class="no-results"><td colspan="9">Failed to load data from ESPN.</td></tr>';
             };
             document.body.appendChild(script);
         }
@@ -599,6 +630,7 @@
 
                     unique.set(name, {
                         name: name,
+                        shortName: a.shortName || name,
                         flagUrl: a.flag ? a.flag.href : '',
                         country: a.flag ? a.flag.alt : '',
                         scoreDisplay: started ? scoreRaw : 'E',
@@ -613,7 +645,7 @@
                 fillCountryDropdown();
                 render();
             } catch (e) {
-                tbody.innerHTML = '<tr class="no-results"><td colspan="5">Error: ' + e.message + '</td></tr>';
+                tbody.innerHTML = '<tr class="no-results"><td colspan="9">Error: ' + e.message + '</td></tr>';
             }
         }
 
@@ -639,7 +671,7 @@
             tbody.innerHTML = '';
 
             if (started.length === 0 && notStarted.length === 0) {
-                tbody.innerHTML = '<tr class="no-results"><td colspan="5">No athletes match the current filters.</td></tr>';
+                tbody.innerHTML = '<tr class="no-results"><td colspan="9">No athletes match the current filters.</td></tr>';
                 return;
             }
 
@@ -670,7 +702,7 @@
             if (notStarted.length) {
                 var div = document.createElement('tr');
                 div.className = 'divider';
-                div.innerHTML = '<td colspan="5">Yet to Tee Off</td>';
+                div.innerHTML = '<td colspan="9">Yet to Tee Off</td>';
                 tbody.appendChild(div);
 
                 // If the only athletes we're showing are in the not-started group,
@@ -682,16 +714,37 @@
             }
         }
 
+        function getRoundStrokes(a) {
+            var rounds = ['', '', '', ''];
+            if (a.linescores) {
+                for (var r = 0; r < Math.min(a.linescores.length, 4); r++) {
+                    var rd = a.linescores[r];
+                    var val = rd.value;
+                    if (val !== undefined && val !== null && val > 0) {
+                        rounds[r] = String(Math.round(val));
+                    }
+                }
+            }
+            return rounds;
+        }
+
         function buildRow(a, pos) {
             var tr = document.createElement('tr');
             var isNeg = a.scoreNum < 0;
             var scoreClass = isNeg ? ' class="score-neg"' : '';
+            var rounds = getRoundStrokes(a);
+
+            var flagHtml = a.flagUrl ? '<img src="' + escapeHtml(a.flagUrl) + '" class="flag player-flag" alt="' + escapeHtml(a.country) + '" onerror="this.style.display=\'none\'">' : '';
 
             tr.innerHTML =
                 '<td>' + (pos !== undefined ? pos : '-') + '</td>' +
-                '<td class="player-name">' + escapeHtml(a.name) + '</td>' +
-                '<td><img src="' + escapeHtml(a.flagUrl) + '" class="flag" alt="' + escapeHtml(a.country) + '" onerror="this.style.display=\'none\'"></td>' +
+                '<td class="player-name">' + flagHtml + '<span class="full-name">' + escapeHtml(a.name) + '</span><span class="short-name">' + escapeHtml(a.shortName) + '</span></td>' +
+                '<td class="country-col"><img src="' + escapeHtml(a.flagUrl) + '" class="flag" alt="' + escapeHtml(a.country) + '" onerror="this.style.display=\'none\'"></td>' +
                 '<td' + scoreClass + '>' + escapeHtml(a.scoreDisplay) + '</td>' +
+                '<td>' + rounds[0] + '</td>' +
+                '<td>' + rounds[1] + '</td>' +
+                '<td>' + rounds[2] + '</td>' +
+                '<td>' + rounds[3] + '</td>' +
                 '<td>' + escapeHtml(a.thru) + '</td>';
 
             tr.querySelector('.player-name').addEventListener('click', function() {
