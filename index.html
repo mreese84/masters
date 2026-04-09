@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masters Leaderboard 2026</title>
+    <title>Masters Leaderboard</title>
     <style>
         :root {
             --primary: #107d57;
@@ -96,7 +96,7 @@
                 </tr>
             </thead>
             <tbody id="leaderboardBody">
-                <tr><td colspan="4">Loading live leaderboard data...</td></tr>
+                <tr><td colspan="4">Searching API response for competitors...</td></tr>
             </tbody>
         </table>
     </div>
@@ -104,49 +104,70 @@
     <script>
         let allAthletes = [];
 
+        // Recursive search function to find all athlete entries regardless of nesting
+        function findCompetitors(obj, results = []) {
+            if (!obj || typeof obj !== 'object') return results;
+
+            // Look for objects that contain an 'athlete' key as per the provided snippet
+            if (obj.athlete && (obj.athlete.fullName || obj.athlete.displayName)) {
+                results.push(obj);
+            }
+
+            for (const key in obj) {
+                if (obj.hasOwnProperty(key)) {
+                    findCompetitors(obj[key], results);
+                }
+            }
+            return results;
+        }
+
         window.espnCallback = function(data) {
             const body = document.getElementById('leaderboardBody');
             try {
-                // Accessing competitors via the specific endpoint structure
-                const competitors = data.events?.[0]?.competitions?.[0]?.competitors || [];
+                // Find all competitor entries anywhere in the JSON
+                const rawCompetitors = findCompetitors(data);
                 
-                if (competitors.length === 0) throw new Error("No competitors found.");
+                if (rawCompetitors.length === 0) throw new Error("No athletes found in the JSON response.");
 
-                allAthletes = competitors.map(comp => {
+                // Use a Map to ensure unique athletes (by fullName)
+                const uniqueMap = new Map();
+
+                rawCompetitors.forEach(comp => {
                     const athlete = comp.athlete;
                     const rawScore = comp.score; 
-                    
-                    // Logic to determine if they've started based on the presence of a score string
-                    const hasStarted = rawScore !== null && rawScore !== undefined && rawScore !== "";
-                    
-                    const scoreDisplay = hasStarted ? rawScore : "Scheduled";
-                    let scoreSort = 0;
-                    if (hasStarted) {
-                        // "E" or "Even" counts as 0, otherwise parse the integer (handles negative signs)
-                        scoreSort = (rawScore === "E" || rawScore === "Even") ? 0 : parseInt(rawScore);
-                    }
+                    const name = athlete.fullName || athlete.displayName;
 
-                    return {
-                        fullName: athlete.fullName || athlete.displayName,
-                        countryFlag: athlete.flag?.href || "",
-                        countryName: athlete.flag?.alt || "International",
-                        scoreDisplay: scoreDisplay,
-                        scoreSort: scoreSort,
-                        hasStarted: hasStarted
-                    };
+                    // If we haven't added this athlete yet
+                    if (!uniqueMap.has(name)) {
+                        const hasStarted = rawScore !== null && rawScore !== undefined && rawScore !== "";
+                        const scoreDisplay = hasStarted ? rawScore : "Scheduled";
+                        let scoreSort = 0;
+                        if (hasStarted) {
+                            scoreSort = (rawScore === "E" || rawScore === "Even") ? 0 : parseInt(rawScore);
+                        }
+
+                        uniqueMap.set(name, {
+                            fullName: name,
+                            countryFlag: athlete.flag?.href || "",
+                            countryName: athlete.flag?.alt || "International",
+                            scoreDisplay: scoreDisplay,
+                            scoreSort: scoreSort,
+                            hasStarted: hasStarted
+                        });
+                    }
                 });
 
+                allAthletes = Array.from(uniqueMap.values());
                 populateCountryFilter();
                 renderTable(allAthletes);
             } catch (e) {
-                console.error("Parsing Error:", e);
-                body.innerHTML = `<tr><td colspan="4" style="color:red; padding:20px;">Error parsing live data. Tournament ID: 401811941</td></tr>`;
+                console.error("Deep Parse Error:", e);
+                body.innerHTML = `<tr><td colspan="4" style="color:red; padding:20px;">Parse Error: ${e.message}</td></tr>`;
             }
         };
 
         function init() {
             const script = document.createElement('script');
-            // Using the requested URL with JSONP callback
             script.src = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941?callback=espnCallback';
             document.body.appendChild(script);
         }
@@ -155,7 +176,6 @@
             const body = document.getElementById('leaderboardBody');
             body.innerHTML = '';
             
-            // Standard Rank Calculation
             const active = data.filter(a => a.hasStarted).sort((a, b) => a.scoreSort - b.scoreSort);
             const pending = data.filter(a => !a.hasStarted).sort((a, b) => a.fullName.localeCompare(b.fullName));
 
@@ -206,16 +226,13 @@
         searchInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             if (!val) { suggBox.classList.add('hidden'); return; }
-
             const matches = allAthletes.filter(a => a.fullName.toLowerCase().includes(val));
             suggBox.innerHTML = '';
-            
             if (matches.length > 0) {
                 suggBox.classList.remove('hidden');
                 matches.slice(0, 8).forEach(m => {
                     const div = document.createElement('div');
-                    div.className = 'suggestion-item';
-                    div.textContent = m.fullName;
+                    div.className = 'suggestion-item'; div.textContent = m.fullName;
                     div.onclick = () => {
                         searchInput.value = m.fullName;
                         suggBox.classList.add('hidden');
@@ -223,14 +240,11 @@
                     };
                     suggBox.appendChild(div);
                 });
-            } else {
-                suggBox.classList.add('hidden');
-            }
+            } else { suggBox.classList.add('hidden'); }
         });
 
         document.getElementById('countryFilter').addEventListener('change', (e) => {
-            const filtered = e.target.value ? allAthletes.filter(a => a.countryName === e.target.value) : allAthletes;
-            renderTable(filtered);
+            renderTable(e.target.value ? allAthletes.filter(a => a.countryName === e.target.value) : allAthletes);
         });
 
         document.getElementById('clearFilters').addEventListener('click', () => {
