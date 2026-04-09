@@ -3,470 +3,584 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 Masters Leaderboard</title>
+    <title>The Masters Tournament — Leaderboard</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --primary: #107d57;
+            --bg: #ffffff;
+            --alt-bg: #f7f7f7;
+            --text: #3b3939;
+            --negative: #c73232;
+            --border: #d1d1d1;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background-color: #fff;
-            color: #3b3939;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #107d57;
-        }
-
-        .controls {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-            align-items: flex-end;
-        }
-
-        .control-group {
+            font-family: "Georgia", "Times New Roman", serif;
+            background-color: var(--bg);
+            color: var(--text);
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            align-items: center;
+            padding: 30px 20px 60px;
         }
 
-        label {
-            font-size: 14px;
-            font-weight: 600;
-            color: #3b3939;
+        /* ── Header ── */
+        .header {
+            width: 100%;
+            max-width: 940px;
+            text-align: center;
+            padding-bottom: 18px;
+            margin-bottom: 24px;
+            border-bottom: 4px solid var(--primary);
         }
 
-        input[type="text"],
-        select {
-            padding: 10px 12px;
-            border: 1px solid #ddd;
+        .header h1 {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            color: var(--primary);
+            font-size: 2.4rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .header .subtitle {
+            font-size: 0.85rem;
+            color: #999;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        /* ── Controls ── */
+        .controls {
+            width: 100%;
+            max-width: 940px;
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            align-items: stretch;
+        }
+
+        .search-wrapper {
+            position: relative;
+            flex: 2;
+            min-width: 260px;
+        }
+
+        .search-wrapper input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
             border-radius: 4px;
-            font-size: 14px;
-            font-family: inherit;
-            color: #3b3939;
-            width: 250px;
-        }
-
-        input[type="text"]:focus,
-        select:focus {
+            font-size: 0.95rem;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            color: var(--text);
             outline: none;
-            border-color: #107d57;
-            box-shadow: 0 0 0 2px rgba(16, 125, 87, 0.1);
+            transition: border-color 0.2s;
         }
 
-        .autocomplete-list {
+        .search-wrapper input:focus {
+            border-color: var(--primary);
+        }
+
+        .suggestions {
             position: absolute;
-            background-color: #fff;
-            border: 1px solid #ddd;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid var(--border);
             border-top: none;
-            list-style: none;
-            max-height: 200px;
+            border-radius: 0 0 4px 4px;
+            max-height: 260px;
             overflow-y: auto;
-            width: 250px;
-            z-index: 10;
+            z-index: 200;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.10);
             display: none;
         }
 
-        .autocomplete-list.active {
-            display: block;
-        }
+        .suggestions.open { display: block; }
 
-        .autocomplete-list li {
-            padding: 10px 12px;
+        .suggestion-item {
+            padding: 10px 14px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s;
         }
 
-        .autocomplete-list li:hover {
-            background-color: #f7f7f7;
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover,
+        .suggestion-item.active {
+            background: var(--alt-bg);
+            color: var(--primary);
         }
 
-        .autocomplete-list li.selected {
-            background-color: #f7f7f7;
+        select {
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.95rem;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            color: var(--text);
+            background: #fff;
+            min-width: 180px;
+            cursor: pointer;
+            outline: none;
         }
 
-        .control-group.search-wrapper {
-            position: relative;
-        }
+        select:focus { border-color: var(--primary); }
 
-        button {
-            padding: 10px 20px;
-            background-color: #107d57;
+        .btn-clear {
+            padding: 12px 28px;
+            background: var(--primary);
             color: #fff;
             border: none;
             border-radius: 4px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background-color 0.2s;
+            transition: background 0.2s;
         }
 
-        button:hover {
-            background-color: #0d5f44;
-        }
+        .btn-clear:hover { background: #0b5e40; }
 
-        button:active {
-            background-color: #0a4a35;
+        /* ── Leaderboard table ── */
+        .leaderboard {
+            width: 100%;
+            max-width: 940px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            background-color: #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         thead {
-            background-color: #107d57;
+            background: var(--primary);
             color: #fff;
         }
 
-        th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 14px;
+        thead th {
+            padding: 14px 16px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
         }
+
+        thead th:nth-child(1) { text-align: center; width: 10%; }
+        thead th:nth-child(2) { text-align: left; width: 50%; }
+        thead th:nth-child(3) { text-align: center; width: 20%; }
+        thead th:nth-child(4) { text-align: center; width: 20%; }
+
+        tbody tr { transition: background 0.15s; }
+        tbody tr:nth-child(even) { background: var(--alt-bg); }
+        tbody tr:hover { background: #eaf5f0; }
 
         td {
-            padding: 15px;
-            border-bottom: 1px solid #f7f7f7;
-            font-size: 14px;
+            padding: 13px 16px;
+            border-bottom: 1px solid #eee;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 0.92rem;
         }
 
-        tbody tr:hover {
-            background-color: #f7f7f7;
-        }
-
-        .position {
-            font-weight: 600;
-            color: #107d57;
-            width: 80px;
-        }
-
-        .player {
-            font-weight: 500;
-        }
-
-        .country-flag {
-            width: 32px;
-            height: 32px;
-            display: inline-block;
-            border-radius: 2px;
-        }
-
-        .score {
-            font-weight: 600;
-            text-align: right;
-            width: 80px;
-        }
-
-        .score.negative {
-            color: #c73232;
-        }
-
-        .score.even {
-            color: #3b3939;
-        }
-
-        .empty-state {
+        td:nth-child(1) {
             text-align: center;
-            padding: 40px 20px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        td:nth-child(2) {
+            text-align: left;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        td:nth-child(3) { text-align: center; }
+        td:nth-child(4) {
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .flag {
+            width: 28px;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 2px;
+            vertical-align: middle;
+        }
+
+        .score-neg { color: var(--negative); font-weight: 800; }
+
+        .divider td {
+            background: #e8e8e8;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            padding: 10px 16px;
+        }
+
+        .no-results td {
+            text-align: center;
+            padding: 30px;
+            color: #999;
+            font-style: italic;
+        }
+
+        .loading td {
+            text-align: center;
+            padding: 40px;
             color: #999;
         }
 
-        @media (max-width: 768px) {
-            input[type="text"],
-            select {
-                width: 100%;
-            }
-
-            .controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            th, td {
-                padding: 10px;
-                font-size: 12px;
-            }
-
-            .country-flag {
-                width: 24px;
-                height: 24px;
-            }
+        @media (max-width: 600px) {
+            .controls { flex-direction: column; }
+            .header h1 { font-size: 1.6rem; letter-spacing: 3px; }
+            td, th { padding: 10px 8px; font-size: 0.82rem; }
+            .flag { width: 22px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>2026 Masters Leaderboard</h1>
 
-        <div class="controls">
-            <div class="control-group search-wrapper">
-                <label for="search">Search Players</label>
-                <input 
-                    type="text" 
-                    id="search" 
-                    placeholder="Type player name..."
-                    autocomplete="off"
-                >
-                <ul class="autocomplete-list" id="autocompleteList"></ul>
-            </div>
+    <div class="header">
+        <h1>The Masters</h1>
+        <div class="subtitle" id="tournamentStatus">Leaderboard</div>
+    </div>
 
-            <div class="control-group">
-                <label for="countryFilter">Filter by Country</label>
-                <select id="countryFilter">
-                    <option value="">All Countries</option>
-                </select>
-            </div>
-
-            <button id="clearFilters">Clear Filters</button>
+    <div class="controls">
+        <div class="search-wrapper">
+            <input type="text" id="searchInput" placeholder="Search for an athlete…" autocomplete="off">
+            <div class="suggestions" id="suggestions"></div>
         </div>
+        <select id="countryFilter">
+            <option value="">All Countries</option>
+        </select>
+        <button class="btn-clear" id="clearBtn">Clear Filters</button>
+    </div>
 
-        <table id="leaderboard">
+    <div class="leaderboard">
+        <table>
             <thead>
                 <tr>
-                    <th>Position</th>
+                    <th>Pos</th>
                     <th>Player</th>
                     <th>Country</th>
-                    <th style="text-align: right;">Score</th>
+                    <th>Score</th>
                 </tr>
             </thead>
-            <tbody id="leaderboardBody">
-                <tr class="empty-state">
-                    <td colspan="4">Loading leaderboard...</td>
-                </tr>
+            <tbody id="tbody">
+                <tr class="loading"><td colspan="4">Loading leaderboard…</td></tr>
             </tbody>
         </table>
     </div>
 
     <script>
+    (function () {
         const API_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941';
-        
-        let allAthletes = [];
-        let filteredAthletes = [];
-        let selectedPlayer = null;
-        let selectedCountry = null;
 
-        // Fetch data from ESPN API
-        async function fetchLeaderboard() {
+        let allAthletes = [];
+        let activeSearch = null;   // currently‑selected athlete from search
+        let activeCountry = '';    // currently‑selected country
+
+        // ── DOM refs ──
+        const tbody          = document.getElementById('tbody');
+        const searchInput    = document.getElementById('searchInput');
+        const suggestionsBox = document.getElementById('suggestions');
+        const countryFilter  = document.getElementById('countryFilter');
+        const clearBtn       = document.getElementById('clearBtn');
+        const statusEl       = document.getElementById('tournamentStatus');
+
+        // ── Parse helpers ──
+        function parseScore(raw) {
+            if (raw === 'E' || raw === 'Even') return 0;
+            const n = parseInt(raw, 10);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function findCompetitors(obj, results) {
+            if (!obj || typeof obj !== 'object') return results;
+            if (obj.athlete && (obj.athlete.fullName || obj.athlete.displayName)) {
+                results.push(obj);
+            }
+            for (const key in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                    findCompetitors(obj[key], results);
+                }
+            }
+            return results;
+        }
+
+        // ── Fetch & process ──
+        function load() {
+            // Use JSONP for cross‑origin compatibility
+            const cbName = '_espnCB_' + Date.now();
+            window[cbName] = function (data) {
+                delete window[cbName];
+                document.body.removeChild(script);
+                processData(data);
+            };
+            const script = document.createElement('script');
+            script.src = API_URL + '?callback=' + cbName;
+            script.onerror = function () {
+                tbody.innerHTML = '<tr class="no-results"><td colspan="4">Failed to load data from ESPN.</td></tr>';
+            };
+            document.body.appendChild(script);
+        }
+
+        function processData(data) {
             try {
-                const response = await fetch(API_URL);
-                const data = await response.json();
-                
-                // Extract athletes from the API response
-                allAthletes = data.events[0].competitions[0].competitors.map(competitor => {
-                    const score = competitor.score || 0;
-                    const scoreStr = competitor.displayScore || 'E';
-                    const countryCode = competitor.country || 'US';
-                    
-                    return {
-                        id: competitor.id,
-                        name: competitor.athlete?.displayName || 'Unknown',
-                        country: countryCode,
-                        score: scoreStr === 'E' ? 0 : parseInt(scoreStr),
-                        displayScore: scoreStr
-                    };
+                // Extract tournament status
+                const status = data?.status?.type?.shortDetail || data?.competitions?.[0]?.status?.type?.shortDetail || '';
+                if (status) statusEl.textContent = status;
+
+                const raw = findCompetitors(data, []);
+                if (!raw.length) throw new Error('No competitors found');
+
+                const unique = new Map();
+                raw.forEach(function (c) {
+                    const a = c.athlete;
+                    const name = a.fullName || a.displayName;
+                    if (unique.has(name)) return;
+
+                    const scoreRaw = c.score;
+                    const started = scoreRaw !== null && scoreRaw !== undefined && scoreRaw !== '';
+                    // Determine if actually on course — check if linescore value > 0
+                    const lsVal = c.linescores && c.linescores[0] && c.linescores[0].value;
+                    const onCourse = started && lsVal !== undefined && lsVal > 0;
+
+                    unique.set(name, {
+                        name: name,
+                        flagUrl: a.flag ? a.flag.href : '',
+                        country: a.flag ? a.flag.alt : '',
+                        scoreDisplay: started ? scoreRaw : 'E',
+                        scoreNum: parseScore(started ? scoreRaw : 'E'),
+                        onCourse: onCourse
+                    });
                 });
 
-                populateCountryFilter();
-                renderLeaderboard();
-            } catch (error) {
-                console.error('Error fetching leaderboard:', error);
-                document.getElementById('leaderboardBody').innerHTML = 
-                    '<tr class="empty-state"><td colspan="4">Error loading leaderboard. Please try again.</td></tr>';
+                allAthletes = Array.from(unique.values());
+                fillCountryDropdown();
+                render();
+            } catch (e) {
+                tbody.innerHTML = '<tr class="no-results"><td colspan="4">Error: ' + e.message + '</td></tr>';
             }
         }
 
-        // Populate country dropdown
-        function populateCountryFilter() {
-            const countries = [...new Set(allAthletes.map(a => a.country))].sort();
-            const select = document.getElementById('countryFilter');
-            
-            countries.forEach(country => {
-                const option = document.createElement('option');
-                option.value = country;
-                option.textContent = getCountryName(country);
-                select.appendChild(option);
-            });
-        }
+        // ── Rendering ──
+        function render() {
+            let list = allAthletes;
 
-        // Convert country code to country name
-        function getCountryName(code) {
-            const countries = {
-                'US': 'United States',
-                'GB': 'England',
-                'IE': 'Ireland',
-                'AU': 'Australia',
-                'CA': 'Canada',
-                'ZA': 'South Africa',
-                'ES': 'Spain',
-                'IT': 'Italy',
-                'FR': 'France',
-                'DE': 'Germany',
-                'NZ': 'New Zealand',
-                'SE': 'Sweden',
-                'NO': 'Norway',
-                'DK': 'Denmark',
-                'JP': 'Japan',
-                'KR': 'South Korea',
-                'MX': 'Mexico',
-                'AR': 'Argentina',
-                'BR': 'Brazil',
-                'TH': 'Thailand',
-                'IN': 'India',
-                'SG': 'Singapore',
-                'MY': 'Malaysia',
-                'PH': 'Philippines',
-                'ID': 'Indonesia',
-                'VN': 'Vietnam',
-                'CN': 'China',
-                'TW': 'Taiwan',
-                'HK': 'Hong Kong',
-                'TR': 'Turkey',
-                'ZM': 'Zambia',
-                'NG': 'Nigeria',
-                'EG': 'Egypt',
-                'MA': 'Morocco',
-                'UG': 'Uganda',
-                'KE': 'Kenya'
-            };
-            return countries[code] || code;
-        }
+            // Apply country filter
+            if (activeCountry) {
+                list = list.filter(function (a) { return a.country === activeCountry; });
+            }
+            // Apply search filter (single athlete)
+            if (activeSearch) {
+                list = list.filter(function (a) { return a.name === activeSearch; });
+            }
 
-        // Get flag emoji for country
-        function getFlagEmoji(countryCode) {
-            const codePoints = countryCode
-                .toUpperCase()
-                .split('')
-                .map(char => 127397 + char.charCodeAt());
-            return String.fromCodePoint(...codePoints);
-        }
+            // Separate started / not started
+            const started = list.filter(function (a) { return a.onCourse; })
+                                .sort(function (a, b) { return a.scoreNum - b.scoreNum; });
+            const notStarted = list.filter(function (a) { return !a.onCourse; })
+                                   .sort(function (a, b) { return a.name.localeCompare(b.name); });
 
-        // Calculate rankings with ties
-        function calculateRankings(athletes) {
-            const sorted = [...athletes].sort((a, b) => a.score - b.score);
-            const rankings = {};
-            let currentRank = 1;
+            tbody.innerHTML = '';
 
-            sorted.forEach((athlete, index) => {
-                if (index > 0 && sorted[index].score !== sorted[index - 1].score) {
-                    currentRank = index + 1;
+            if (started.length === 0 && notStarted.length === 0) {
+                tbody.innerHTML = '<tr class="no-results"><td colspan="4">No athletes match the current filters.</td></tr>';
+                return;
+            }
+
+            // Assign positions with ties for started athletes
+            var positions = [];
+            if (started.length) {
+                var rank = 1;
+                positions.push(rank);
+                for (var i = 1; i < started.length; i++) {
+                    if (started[i].scoreNum !== started[i - 1].scoreNum) {
+                        rank = i + 1;
+                    }
+                    positions.push(rank);
                 }
-                rankings[athlete.id] = currentRank;
+            }
+
+            started.forEach(function (a, i) {
+                tbody.appendChild(buildRow(a, positions[i]));
             });
 
-            return rankings;
+            if (notStarted.length) {
+                var div = document.createElement('tr');
+                div.className = 'divider';
+                div.innerHTML = '<td colspan="4">Yet to Tee Off</td>';
+                tbody.appendChild(div);
+
+                // If the only athletes we're showing are in the not-started group,
+                // rank them all as T1 (all at E / 0).
+                var nsRank = started.length ? started.length + 1 : 1;
+                notStarted.forEach(function (a) {
+                    tbody.appendChild(buildRow(a, nsRank));
+                });
+            }
         }
 
-        // Render leaderboard
-        function renderLeaderboard() {
-            filteredAthletes = allAthletes.filter(athlete => {
-                const matchesPlayer = !selectedPlayer || athlete.id === selectedPlayer;
-                const matchesCountry = !selectedCountry || athlete.country === selectedCountry;
-                return matchesPlayer && matchesCountry;
+        function buildRow(a, pos) {
+            var tr = document.createElement('tr');
+            var isNeg = a.scoreNum < 0;
+            var scoreClass = isNeg ? ' class="score-neg"' : '';
+
+            tr.innerHTML =
+                '<td>' + (pos !== undefined ? pos : '-') + '</td>' +
+                '<td>' + escapeHtml(a.name) + '</td>' +
+                '<td><img src="' + escapeHtml(a.flagUrl) + '" class="flag" alt="' + escapeHtml(a.country) + '" onerror="this.style.display=\'none\'"></td>' +
+                '<td' + scoreClass + '>' + escapeHtml(a.scoreDisplay) + '</td>';
+            return tr;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // ── Country dropdown ──
+        function fillCountryDropdown() {
+            var countries = [];
+            var seen = {};
+            allAthletes.forEach(function (a) {
+                if (a.country && !seen[a.country]) {
+                    seen[a.country] = true;
+                    countries.push(a.country);
+                }
+            });
+            countries.sort();
+            countryFilter.innerHTML = '<option value="">All Countries</option>';
+            countries.forEach(function (c) {
+                var opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                countryFilter.appendChild(opt);
+            });
+        }
+
+        // ── Search + autocomplete ──
+        var highlightIdx = -1;
+
+        searchInput.addEventListener('input', function () {
+            var q = searchInput.value.trim().toLowerCase();
+            highlightIdx = -1;
+
+            if (!q) {
+                closeSuggestions();
+                activeSearch = null;
+                render();
+                return;
+            }
+
+            var matches = allAthletes.filter(function (a) {
+                return a.name.toLowerCase().indexOf(q) !== -1;
             });
 
-            const rankings = calculateRankings(filteredAthletes);
-            const sorted = [...filteredAthletes].sort((a, b) => a.score - b.score);
-
-            const tbody = document.getElementById('leaderboardBody');
-            
-            if (sorted.length === 0) {
-                tbody.innerHTML = '<tr class="empty-state"><td colspan="4">No athletes found</td></tr>';
+            if (!matches.length) {
+                closeSuggestions();
                 return;
             }
 
-            tbody.innerHTML = sorted.map(athlete => {
-                const rank = rankings[athlete.id];
-                const flag = getFlagEmoji(athlete.country);
-                const scoreClass = athlete.score < 0 ? 'negative' : athlete.score === 0 ? 'even' : '';
-                const scoreDisplay = athlete.score > 0 ? `+${athlete.score}` : athlete.displayScore;
+            suggestionsBox.innerHTML = '';
+            matches.slice(0, 10).forEach(function (m, idx) {
+                var div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = m.name;
+                div.setAttribute('data-idx', idx);
+                div.addEventListener('mousedown', function (e) {
+                    e.preventDefault();          // keep focus in input
+                    selectAthlete(m.name);
+                });
+                suggestionsBox.appendChild(div);
+            });
+            suggestionsBox.classList.add('open');
+        });
 
-                return `
-                    <tr>
-                        <td class="position">${rank}</td>
-                        <td class="player">${athlete.name}</td>
-                        <td>${flag} ${getCountryName(athlete.country)}</td>
-                        <td class="score ${scoreClass}">${scoreDisplay}</td>
-                    </tr>
-                `;
-            }).join('');
+        searchInput.addEventListener('keydown', function (e) {
+            var items = suggestionsBox.querySelectorAll('.suggestion-item');
+            if (!items.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                highlightIdx = Math.min(highlightIdx + 1, items.length - 1);
+                updateHighlight(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                highlightIdx = Math.max(highlightIdx - 1, 0);
+                updateHighlight(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (highlightIdx >= 0 && highlightIdx < items.length) {
+                    selectAthlete(items[highlightIdx].textContent);
+                }
+            } else if (e.key === 'Escape') {
+                closeSuggestions();
+            }
+        });
+
+        searchInput.addEventListener('blur', function () {
+            // Small delay so click on suggestion registers first
+            setTimeout(closeSuggestions, 150);
+        });
+
+        function updateHighlight(items) {
+            items.forEach(function (el, i) {
+                el.classList.toggle('active', i === highlightIdx);
+            });
         }
 
-        // Search functionality
-        const searchInput = document.getElementById('search');
-        const autocompleteList = document.getElementById('autocompleteList');
+        function selectAthlete(name) {
+            searchInput.value = name;
+            activeSearch = name;
+            closeSuggestions();
+            render();
+        }
 
-        searchInput.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
-            
-            if (!query) {
-                autocompleteList.classList.remove('active');
-                selectedPlayer = null;
-                renderLeaderboard();
-                return;
-            }
+        function closeSuggestions() {
+            suggestionsBox.classList.remove('open');
+            suggestionsBox.innerHTML = '';
+            highlightIdx = -1;
+        }
 
-            const matches = allAthletes.filter(a => 
-                a.name.toLowerCase().includes(query)
-            );
-
-            if (matches.length === 0) {
-                autocompleteList.classList.remove('active');
-                return;
-            }
-
-            autocompleteList.innerHTML = matches.map(athlete => `
-                <li data-id="${athlete.id}">${athlete.name}</li>
-            `).join('');
-            autocompleteList.classList.add('active');
+        // ── Country filter ──
+        countryFilter.addEventListener('change', function () {
+            activeCountry = countryFilter.value;
+            render();
         });
 
-        autocompleteList.addEventListener('click', (e) => {
-            if (e.target.tagName === 'LI') {
-                const athleteId = e.target.getAttribute('data-id');
-                const athlete = allAthletes.find(a => a.id === athleteId);
-                
-                selectedPlayer = athleteId;
-                searchInput.value = athlete.name;
-                autocompleteList.classList.remove('active');
-                renderLeaderboard();
-            }
-        });
-
-        // Country filter
-        document.getElementById('countryFilter').addEventListener('change', (e) => {
-            selectedCountry = e.target.value || null;
-            renderLeaderboard();
-        });
-
-        // Clear filters
-        document.getElementById('clearFilters').addEventListener('click', () => {
-            selectedPlayer = null;
-            selectedCountry = null;
+        // ── Clear filters ──
+        clearBtn.addEventListener('click', function () {
             searchInput.value = '';
-            document.getElementById('countryFilter').value = '';
-            autocompleteList.classList.remove('active');
-            renderLeaderboard();
+            countryFilter.value = '';
+            activeSearch = null;
+            activeCountry = '';
+            render();
         });
 
-        // Initialize
-        fetchLeaderboard();
+        // ── Kick off ──
+        load();
+    })();
     </script>
 </body>
 </html>
