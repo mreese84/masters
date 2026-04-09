@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masters Leaderboard 2026</title>
+    <title>Masters Leaderboard</title>
     <style>
         :root {
             --primary: #107d57;
@@ -52,9 +52,9 @@
         }
 
         .search-container { position: relative; flex: 2; min-width: 250px; }
-        input, select, button { padding: 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.95rem; }
+        input, select, button { padding: 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.95rem; outline-color: var(--primary); }
         input { width: 100%; box-sizing: border-box; }
-        button { background-color: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; }
+        button { background-color: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; padding: 0 25px; }
 
         .suggestions {
             position: absolute; background: white; border: 1px solid var(--border); width: 100%;
@@ -67,15 +67,26 @@
         .leaderboard-container { width: 100%; max-width: 900px; border: 1px solid var(--border); }
         table { width: 100%; border-collapse: collapse; background: white; }
         thead { background-color: var(--primary); color: white; }
-        th { text-transform: uppercase; padding: 15px; font-size: 0.8rem; }
+        th { text-transform: uppercase; padding: 15px; font-size: 0.8rem; letter-spacing: 1px; }
         td { padding: 14px 15px; border-bottom: 1px solid #eee; text-align: center; }
         tr:nth-child(even) { background-color: var(--alt-bg); }
 
-        .player-cell { text-align: left; font-weight: 700; }
-        .flag-img { width: 28px; height: auto; border: 1px solid #ddd; }
+        .player-cell { text-align: left; font-weight: 700; color: #1a1a1a; }
+        .flag-img { width: 28px; height: auto; border: 1px solid #ddd; vertical-align: middle; }
         .score-neg { color: var(--negative); font-weight: 800; }
-        .status-scheduled { font-style: italic; color: #888; font-size: 0.85rem; }
-        .section-divider { background-color: #e8e8e8 !important; font-weight: bold; text-align: left; padding: 10px 15px; font-size: 0.75rem; color: #555; text-transform: uppercase; }
+        
+        /* Section Divider for players who haven't started */
+        .section-divider { 
+            background-color: #e8e8e8 !important; 
+            font-weight: bold; 
+            text-align: left; 
+            padding: 12px 15px; 
+            font-size: 0.75rem; 
+            color: #444; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+        .status-scheduled { color: #888; font-style: italic; font-size: 0.85rem; }
 
         .hidden { display: none; }
     </style>
@@ -88,7 +99,7 @@
 
     <div class="controls">
         <div class="search-container">
-            <input type="text" id="playerSearch" placeholder="Search athlete..." autocomplete="off">
+            <input type="text" id="playerSearch" placeholder="Search for an athlete..." autocomplete="off">
             <div id="suggestions" class="suggestions hidden"></div>
         </div>
         <select id="countryFilter"><option value="">All Countries</option></select>
@@ -106,44 +117,49 @@
                 </tr>
             </thead>
             <tbody id="leaderboardBody">
-                <tr><td colspan="4">Refreshing tournament data...</td></tr>
+                <tr><td colspan="4">Loading live tournament data...</td></tr>
             </tbody>
         </table>
     </div>
 
     <script>
-        // Use general scoreboard endpoint to auto-detect the current event
-        const API_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard';
+        // Using a CORS proxy to bypass browser restrictions
+        const TARGET_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941';
+        const API_URL = `https://api.allorigins.win/get?url=${encodeURIComponent(TARGET_URL)}`;
+
         let allAthletes = [];
 
         async function init() {
             try {
                 const response = await fetch(API_URL);
-                const data = await response.json();
+                const proxyData = await response.json();
+                const data = JSON.parse(proxyData.contents);
                 
-                // Find the Masters event in the day's events
-                const mastersEvent = data.events.find(e => e.name.includes("Masters")) || data.events[0];
-                const competitors = mastersEvent.competitions[0].competitors;
+                const event = data.events[0];
+                const competitors = event.competitions[0].competitors;
                 
                 allAthletes = competitors.map(comp => {
-                    const status = comp.status.type.name; // e.g., STATUS_SCHEDULED or STATUS_IN_PROGRESS
+                    // ESPN status ID 1 = Scheduled (Hasn't started)
+                    const statusId = comp.status.type.id;
+                    const hasStarted = statusId !== "1";
+                    
                     const scoreVal = comp.score?.displayValue || "--";
+                    
                     return {
-                        id: comp.id,
                         fullName: comp.athlete.displayName,
                         countryFlag: comp.athlete.flag,
                         countryName: comp.athlete.birthPlace || "International",
-                        scoreDisplay: scoreVal,
-                        scoreSort: (scoreVal === "E" || scoreVal === "--") ? 0 : parseInt(scoreVal),
-                        hasStarted: status !== "STATUS_SCHEDULED"
+                        scoreDisplay: hasStarted ? scoreVal : "Scheduled",
+                        scoreSort: (scoreVal === "E" || !hasStarted) ? 0 : parseInt(scoreVal),
+                        hasStarted: hasStarted
                     };
                 });
 
                 populateCountryFilter();
                 renderTable(allAthletes);
             } catch (error) {
-                console.error("API Error:", error);
-                document.getElementById('leaderboardBody').innerHTML = `<tr><td colspan="4">Error loading live data.</td></tr>`;
+                console.error("Fetch Error:", error);
+                document.getElementById('leaderboardBody').innerHTML = `<tr><td colspan="4">Error: Could not retrieve live data.</td></tr>`;
             }
         }
 
@@ -151,40 +167,41 @@
             const body = document.getElementById('leaderboardBody');
             body.innerHTML = '';
             
-            const started = data.filter(a => a.hasStarted).sort((a, b) => a.scoreSort - b.scoreSort);
+            const active = data.filter(a => a.hasStarted).sort((a, b) => a.scoreSort - b.scoreSort);
             const pending = data.filter(a => !a.hasStarted).sort((a, b) => a.fullName.localeCompare(b.fullName));
 
-            // Helper to add rows
-            const addRows = (list, isPending) => {
-                let currentRank = 1;
-                list.forEach((athlete, index) => {
-                    if (!isPending && index > 0 && athlete.scoreSort > list[index - 1].scoreSort) {
-                        currentRank = index + 1;
-                    }
+            // 1. Render Active Players
+            let currentRank = 1;
+            active.forEach((athlete, index) => {
+                if (index > 0 && athlete.scoreSort > active[index-1].scoreSort) {
+                    currentRank = index + 1;
+                }
+                body.appendChild(createRow(athlete, currentRank));
+            });
 
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${isPending ? '-' : currentRank}</td>
-                        <td class="player-cell">${athlete.fullName}</td>
-                        <td><img src="${athlete.countryFlag}" class="flag-img" alt="flag"></td>
-                        <td class="${!isPending && athlete.scoreSort < 0 ? 'score-neg' : 'status-scheduled'}">
-                            ${athlete.scoreDisplay}
-                        </td>
-                    `;
-                    body.appendChild(row);
-                });
-            };
-
-            if (started.length > 0) {
-                addRows(started, false);
-            }
-
+            // 2. Render Pending Players Section
             if (pending.length > 0) {
                 const divider = document.createElement('tr');
-                divider.innerHTML = `<td colspan="4" class="section-divider">Yet to Tee Off</td>`;
+                divider.innerHTML = `<td colspan="4" class="section-divider">Not Yet Started</td>`;
                 body.appendChild(divider);
-                addRows(pending, true);
+                
+                pending.forEach(athlete => {
+                    body.appendChild(createRow(athlete, "-"));
+                });
             }
+        }
+
+        function createRow(athlete, rank) {
+            const row = document.createElement('tr');
+            const scoreClass = athlete.hasStarted && athlete.scoreSort < 0 ? 'score-neg' : (athlete.hasStarted ? '' : 'status-scheduled');
+            
+            row.innerHTML = `
+                <td>${rank}</td>
+                <td class="player-cell">${athlete.fullName}</td>
+                <td><img src="${athlete.countryFlag}" class="flag-img" alt="flag"></td>
+                <td class="${scoreClass}">${athlete.scoreDisplay}</td>
+            `;
+            return row;
         }
 
         function populateCountryFilter() {
@@ -197,13 +214,15 @@
             });
         }
 
-        // Event listeners for Search and Clear
+        // Search Suggestion Logic
         document.getElementById('playerSearch').addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             const suggestions = document.getElementById('suggestions');
             if (!val) { suggestions.classList.add('hidden'); return; }
+
             const matches = allAthletes.filter(a => a.fullName.toLowerCase().includes(val));
             suggestions.innerHTML = '';
+            
             if (matches.length > 0) {
                 suggestions.classList.remove('hidden');
                 matches.slice(0, 8).forEach(m => {
@@ -221,7 +240,8 @@
         });
 
         document.getElementById('countryFilter').addEventListener('change', (e) => {
-            renderTable(e.target.value ? allAthletes.filter(a => a.countryName === e.target.value) : allAthletes);
+            const filtered = e.target.value ? allAthletes.filter(a => a.countryName === e.target.value) : allAthletes;
+            renderTable(filtered);
         });
 
         document.getElementById('clearFilters').addEventListener('click', () => {
