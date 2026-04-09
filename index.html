@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -902,9 +903,7 @@
                 html += buildNineHoles(holes, 0, 9, augustaPars, 'OUT', rIdx, roundAvgs);
 
                 // Back 9
-                if (holes.length > 9) {
-                    html += buildNineHoles(holes, 9, Math.min(holes.length, 18), augustaPars, 'IN', rIdx, roundAvgs);
-                }
+                html += buildNineHoles(holes, 9, 18, augustaPars, 'IN', rIdx, roundAvgs);
             });
 
             content.innerHTML = html;
