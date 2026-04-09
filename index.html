@@ -147,7 +147,7 @@
         function init() {
             const script = document.createElement('script');
             // Using the requested URL with JSONP callback
-            script.src = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941';
+            script.src = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941?callback=espnCallback';
             document.body.appendChild(script);
         }
 
