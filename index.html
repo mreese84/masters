@@ -115,42 +115,30 @@
                 </tr>
             </thead>
             <tbody id="leaderboardBody">
-                <tr><td colspan="4">Establishing secure connection to live data...</td></tr>
+                <tr><td colspan="4">Loading live tournament data via JSONP...</td></tr>
             </tbody>
         </table>
     </div>
 
     <script>
-        // Swapped to a more reliable proxy for GitHub Pages
-        const TARGET_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941';
-        const PROXY_URL = 'https://corsproxy.io/?' + encodeURIComponent(TARGET_URL);
-
         let allAthletes = [];
 
-        async function init() {
-            const body = document.getElementById('leaderboardBody');
+        // Function called by the JSONP callback
+        window.espnCallback = function(data) {
             try {
-                const response = await fetch(PROXY_URL);
-                if (!response.ok) throw new Error('Network response was not ok');
+                if (!data.events || !data.events[0]) throw new Error("No event data found.");
                 
-                const data = await response.json();
-                
-                // Strict check for ESPN's data structure
-                if (!data.events || !data.events[0] || !data.events[0].competitions[0]) {
-                    throw new Error('Data structure from ESPN is unexpected.');
-                }
-
                 const competitors = data.events[0].competitions[0].competitors;
                 
                 allAthletes = competitors.map(comp => {
-                    const statusId = comp.status?.type?.id;
-                    const hasStarted = statusId !== "1"; // 1 is 'Scheduled'
+                    // Status ID "1" usually means "Scheduled"
+                    const hasStarted = comp.status.type.id !== "1";
                     const scoreVal = comp.score?.displayValue || "--";
                     
                     return {
-                        fullName: comp.athlete?.displayName || "Unknown Player",
-                        countryFlag: comp.athlete?.flag || "",
-                        countryName: comp.athlete?.birthPlace || "International",
+                        fullName: comp.athlete.displayName,
+                        countryFlag: comp.athlete.flag,
+                        countryName: comp.athlete.birthPlace || "International",
                         scoreDisplay: hasStarted ? scoreVal : "Scheduled",
                         scoreSort: (scoreVal === "E" || !hasStarted) ? 0 : parseInt(scoreVal),
                         hasStarted: hasStarted
@@ -159,20 +147,27 @@
 
                 populateCountryFilter();
                 renderTable(allAthletes);
-            } catch (error) {
-                console.error("Fetch Error:", error);
-                body.innerHTML = `<tr><td colspan="4" style="color:red; padding: 20px;">
-                    <strong>Connection Error:</strong> ${error.message}<br>
-                    Please try refreshing in a few moments.
-                </td></tr>`;
+            } catch (e) {
+                console.error("JSONP Data Error:", e);
+                document.getElementById('leaderboardBody').innerHTML = `<tr><td colspan="4" style="color:red">Error parsing tournament data.</td></tr>`;
             }
+        };
+
+        // Initialize by injecting a script tag (JSONP method)
+        function init() {
+            const script = document.createElement('script');
+            // ESPN's API supports a "callback" parameter which bypasses CORS
+            script.src = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941?callback=espnCallback';
+            script.onerror = function() {
+                document.getElementById('leaderboardBody').innerHTML = `<tr><td colspan="4" style="color:red">Failed to reach ESPN. Tournament ID may be invalid or expired.</td></tr>`;
+            };
+            document.body.appendChild(script);
         }
 
         function renderTable(data) {
             const body = document.getElementById('leaderboardBody');
             body.innerHTML = '';
             
-            // Standard Competition Ranking (SCR)
             const active = data.filter(a => a.hasStarted).sort((a, b) => a.scoreSort - b.scoreSort);
             const pending = data.filter(a => !a.hasStarted).sort((a, b) => a.fullName.localeCompare(b.fullName));
 
@@ -188,21 +183,19 @@
                 const divider = document.createElement('tr');
                 divider.innerHTML = `<td colspan="4" class="section-divider">Not Yet Started</td>`;
                 body.appendChild(divider);
-                
-                pending.forEach(athlete => {
-                    body.appendChild(createRow(athlete, "-"));
-                });
+                pending.forEach(athlete => body.appendChild(createRow(athlete, "-")));
             }
         }
 
         function createRow(athlete, rank) {
             const row = document.createElement('tr');
-            const scoreClass = (athlete.hasStarted && athlete.scoreSort < 0) ? 'score-neg' : (athlete.hasStarted ? '' : 'status-scheduled');
+            const isNegative = athlete.hasStarted && athlete.scoreSort < 0;
+            const scoreClass = isNegative ? 'score-neg' : (athlete.hasStarted ? '' : 'status-scheduled');
             
             row.innerHTML = `
                 <td>${rank}</td>
                 <td class="player-cell">${athlete.fullName}</td>
-                <td><img src="${athlete.countryFlag}" class="flag-img" alt="flag" onerror="this.style.display='none'"></td>
+                <td><img src="${athlete.countryFlag}" class="flag-img" alt="flag" onerror="this.style.visibility='hidden'"></td>
                 <td class="${scoreClass}">${athlete.scoreDisplay}</td>
             `;
             return row;
@@ -210,7 +203,7 @@
 
         function populateCountryFilter() {
             const filter = document.getElementById('countryFilter');
-            const countries = [...new Set(allAthletes.map(a => a.countryName))].filter(c => c).sort();
+            const countries = [...new Set(allAthletes.map(a => a.countryName))].filter(Boolean).sort();
             countries.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c; opt.textContent = c;
@@ -218,6 +211,7 @@
             });
         }
 
+        // Search and filter event listeners
         document.getElementById('playerSearch').addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             const suggestions = document.getElementById('suggestions');
