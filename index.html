@@ -377,6 +377,41 @@
 
         .scorecard-table .total-col { background: #f7f7f7; font-weight: 800; }
 
+        /* Hole popover */
+        .hole-popover {
+            position: absolute;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 14px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 0.8rem;
+            color: var(--text);
+            white-space: nowrap;
+            z-index: 300;
+            pointer-events: auto;
+        }
+
+        .hole-popover .popover-label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #999;
+            margin-bottom: 2px;
+        }
+
+        .hole-popover .popover-value {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--primary);
+        }
+
+        .scorecard-table .score-row td.has-avg {
+            cursor: pointer;
+            position: relative;
+        }
+
         /* Score indicators: circles for under par, squares for over par */
         .score-indicator {
             display: inline-flex;
@@ -881,9 +916,9 @@
             var hasScores = false;
             for (var i = start; i < end; i++) {
                 var avgInfo = roundAvgs && roundAvgs[i] ? roundAvgs[i] : null;
-                var tooltip = '';
+                var avgAttr = '';
                 if (avgInfo && avgInfo.count > 0) {
-                    tooltip = ' title="Field avg: ' + avgInfo.avg.toFixed(2) + '"';
+                    avgAttr = ' data-field-avg="' + avgInfo.avg.toFixed(2) + '"';
                 }
                 if (i < holes.length && holes[i]) {
                     var val = holes[i].value !== undefined ? holes[i].value : parseInt(holes[i].displayValue, 10);
@@ -897,16 +932,17 @@
                         else if (val === par - 1) cls = 'birdie';
                         else if (val === par + 1) cls = 'bogey';
                         else if (val >= par + 2) cls = 'double-bogey';
+                        var tdClass = avgAttr ? ' class="has-avg"' : '';
                         if (cls) {
-                            html += '<td' + tooltip + '><span class="score-indicator ' + cls + '">' + val + '</span></td>';
+                            html += '<td' + tdClass + avgAttr + '><span class="score-indicator ' + cls + '">' + val + '</span></td>';
                         } else {
-                            html += '<td' + tooltip + '>' + val + '</td>';
+                            html += '<td' + tdClass + avgAttr + '>' + val + '</td>';
                         }
                     } else {
-                        html += '<td' + tooltip + '></td>';
+                        html += '<td></td>';
                     }
                 } else {
-                    html += '<td' + tooltip + '></td>';
+                    html += '<td></td>';
                 }
             }
             html += '<td class="total-col">' + (hasScores ? scoreTotal : '') + '</td>';
@@ -923,6 +959,57 @@
         }
 
         document.getElementById('backToLeaderboard').addEventListener('click', showLeaderboard);
+
+        // ── Popover for field averages ──
+        var activePopover = null;
+
+        document.getElementById('scorecardContent').addEventListener('click', function(e) {
+            var td = e.target.closest('td.has-avg');
+            if (!td) {
+                closePopover();
+                return;
+            }
+            var avg = td.getAttribute('data-field-avg');
+            if (!avg) return;
+
+            closePopover();
+
+            var popover = document.createElement('div');
+            popover.className = 'hole-popover';
+            popover.innerHTML = '<div class="popover-label">Field Average</div><div class="popover-value">' + avg + '</div>';
+
+            document.body.appendChild(popover);
+
+            var rect = td.getBoundingClientRect();
+            var popW = popover.offsetWidth;
+            var popH = popover.offsetHeight;
+            var left = rect.left + (rect.width / 2) - (popW / 2) + window.scrollX;
+            var top = rect.top - popH - 8 + window.scrollY;
+
+            // Keep within viewport
+            if (left < 4) left = 4;
+            if (left + popW > window.innerWidth - 4) left = window.innerWidth - popW - 4;
+            if (top < window.scrollY + 4) top = rect.bottom + 8 + window.scrollY;
+
+            popover.style.left = left + 'px';
+            popover.style.top = top + 'px';
+            activePopover = popover;
+
+            e.stopPropagation();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (activePopover && !activePopover.contains(e.target)) {
+                closePopover();
+            }
+        });
+
+        function closePopover() {
+            if (activePopover) {
+                activePopover.remove();
+                activePopover = null;
+            }
+        }
 
         // ── Kick off ──
         load();
