@@ -182,10 +182,11 @@
             letter-spacing: 1.5px;
         }
 
-        .leaderboard thead th:nth-child(1) { text-align: center; width: 10%; }
-        .leaderboard thead th:nth-child(2) { text-align: left; width: 50%; }
-        .leaderboard thead th:nth-child(3) { text-align: center; width: 20%; }
-        .leaderboard thead th:nth-child(4) { text-align: center; width: 20%; }
+        .leaderboard thead th:nth-child(1) { text-align: center; width: 8%; }
+        .leaderboard thead th:nth-child(2) { text-align: left; width: 40%; }
+        .leaderboard thead th:nth-child(3) { text-align: center; width: 18%; }
+        .leaderboard thead th:nth-child(4) { text-align: center; width: 17%; }
+        .leaderboard thead th:nth-child(5) { text-align: center; width: 17%; }
 
         tbody tr { transition: background 0.15s; }
         tbody tr:nth-child(even) { background: var(--alt-bg); }
@@ -215,6 +216,7 @@
             text-align: center;
             font-weight: 700;
         }
+        .leaderboard td:nth-child(5) { text-align: center; }
 
         .flag {
             width: 28px;
@@ -489,10 +491,11 @@
                     <th>Player</th>
                     <th>Country</th>
                     <th>Score</th>
+                    <th>Thru</th>
                 </tr>
             </thead>
             <tbody id="tbody">
-                <tr class="loading"><td colspan="4">Loading leaderboard…</td></tr>
+                <tr class="loading"><td colspan="5">Loading leaderboard…</td></tr>
             </tbody>
         </table>
     </div>
@@ -525,6 +528,23 @@
             return isNaN(n) ? 0 : n;
         }
 
+        function computeThru(linescores) {
+            if (!linescores || !linescores.length) return '-';
+            // Look at the latest round with hole data
+            for (var r = linescores.length - 1; r >= 0; r--) {
+                var holes = linescores[r].linescores;
+                if (!holes || !holes.length) continue;
+                var count = 0;
+                for (var h = 0; h < holes.length; h++) {
+                    if (!holes[h]) continue;
+                    var val = holes[h].value !== undefined ? holes[h].value : parseInt(holes[h].displayValue, 10);
+                    if (!isNaN(val) && val > 0) count++;
+                }
+                if (count > 0) return count >= 18 ? 'F' : String(count);
+            }
+            return '-';
+        }
+
         function findCompetitors(obj, results) {
             if (!obj || typeof obj !== 'object') return results;
             if (obj.athlete && (obj.athlete.fullName || obj.athlete.displayName)) {
@@ -550,7 +570,7 @@
             const script = document.createElement('script');
             script.src = API_URL + '?callback=' + cbName;
             script.onerror = function () {
-                tbody.innerHTML = '<tr class="no-results"><td colspan="4">Failed to load data from ESPN.</td></tr>';
+                tbody.innerHTML = '<tr class="no-results"><td colspan="5">Failed to load data from ESPN.</td></tr>';
             };
             document.body.appendChild(script);
         }
@@ -583,7 +603,8 @@
                         scoreDisplay: started ? scoreRaw : 'E',
                         scoreNum: parseScore(started ? scoreRaw : 'E'),
                         onCourse: onCourse,
-                        linescores: c.linescores || []
+                        linescores: c.linescores || [],
+                        thru: computeThru(c.linescores)
                     });
                 });
 
@@ -591,7 +612,7 @@
                 fillCountryDropdown();
                 render();
             } catch (e) {
-                tbody.innerHTML = '<tr class="no-results"><td colspan="4">Error: ' + e.message + '</td></tr>';
+                tbody.innerHTML = '<tr class="no-results"><td colspan="5">Error: ' + e.message + '</td></tr>';
             }
         }
 
@@ -617,7 +638,7 @@
             tbody.innerHTML = '';
 
             if (started.length === 0 && notStarted.length === 0) {
-                tbody.innerHTML = '<tr class="no-results"><td colspan="4">No athletes match the current filters.</td></tr>';
+                tbody.innerHTML = '<tr class="no-results"><td colspan="5">No athletes match the current filters.</td></tr>';
                 return;
             }
 
@@ -641,7 +662,7 @@
             if (notStarted.length) {
                 var div = document.createElement('tr');
                 div.className = 'divider';
-                div.innerHTML = '<td colspan="4">Yet to Tee Off</td>';
+                div.innerHTML = '<td colspan="5">Yet to Tee Off</td>';
                 tbody.appendChild(div);
 
                 // If the only athletes we're showing are in the not-started group,
@@ -662,7 +683,8 @@
                 '<td>' + (pos !== undefined ? pos : '-') + '</td>' +
                 '<td class="player-name">' + escapeHtml(a.name) + '</td>' +
                 '<td><img src="' + escapeHtml(a.flagUrl) + '" class="flag" alt="' + escapeHtml(a.country) + '" onerror="this.style.display=\'none\'"></td>' +
-                '<td' + scoreClass + '>' + escapeHtml(a.scoreDisplay) + '</td>';
+                '<td' + scoreClass + '>' + escapeHtml(a.scoreDisplay) + '</td>' +
+                '<td>' + escapeHtml(a.thru) + '</td>';
 
             tr.querySelector('.player-name').addEventListener('click', function() {
                 showScorecard(a.name);
