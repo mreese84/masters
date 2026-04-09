@@ -249,11 +249,152 @@
             color: #999;
         }
 
+        /* ── Clickable player names ── */
+        td.player-name {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        td.player-name:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        /* ── Scorecard view ── */
+        .scorecard-view {
+            width: 100%;
+            max-width: 940px;
+            display: none;
+        }
+
+        .btn-back {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 22px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-back:hover { background: #0b5e40; }
+
+        .scorecard-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .scorecard-header h2 {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 1.5rem;
+            color: var(--text);
+        }
+
+        .scorecard-header .score-badge {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            padding: 4px 14px;
+            border-radius: 4px;
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .round-label {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--primary);
+            margin: 20px 0 8px;
+        }
+
+        .scorecard-table {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            margin-bottom: 16px;
+        }
+
+        .scorecard-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .scorecard-table th,
+        .scorecard-table td {
+            padding: 10px 6px;
+            text-align: center;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 0.82rem;
+            border: 1px solid #eee;
+            min-width: 36px;
+        }
+
+        .scorecard-table th {
+            background: var(--primary);
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .scorecard-table .par-row td {
+            background: #f0f0f0;
+            font-weight: 700;
+            color: #666;
+        }
+
+        .scorecard-table .par-row td:first-child {
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+        }
+
+        .scorecard-table .score-row td {
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .scorecard-table .score-row td:first-child {
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+            color: var(--primary);
+        }
+
+        .scorecard-table .birdie { background: #d4edda; color: #155724; }
+        .scorecard-table .eagle { background: #b8daff; color: #004085; }
+        .scorecard-table .bogey { background: #fff3cd; color: #856404; }
+        .scorecard-table .double-bogey { background: #f8d7da; color: #721c24; }
+        .scorecard-table .total-col { background: #f7f7f7; font-weight: 800; }
+
+        .no-hole-data {
+            padding: 20px;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
         @media (max-width: 600px) {
             .controls { flex-direction: column; }
             .header h1 { font-size: 1.6rem; letter-spacing: 3px; }
             td, th { padding: 10px 8px; font-size: 0.82rem; }
             .flag { width: 22px; }
+            .scorecard-table th,
+            .scorecard-table td { padding: 6px 3px; font-size: 0.72rem; min-width: 28px; }
         }
     </style>
 </head>
@@ -289,6 +430,11 @@
                 <tr class="loading"><td colspan="4">Loading leaderboard…</td></tr>
             </tbody>
         </table>
+    </div>
+
+    <div class="scorecard-view" id="scorecardView">
+        <button class="btn-back" id="backToLeaderboard">← Back to Leaderboard</button>
+        <div id="scorecardContent"></div>
     </div>
 
     <script>
@@ -371,7 +517,8 @@
                         country: a.flag ? a.flag.alt : '',
                         scoreDisplay: started ? scoreRaw : 'E',
                         scoreNum: parseScore(started ? scoreRaw : 'E'),
-                        onCourse: onCourse
+                        onCourse: onCourse,
+                        linescores: c.linescores || []
                     });
                 });
 
@@ -448,9 +595,14 @@
 
             tr.innerHTML =
                 '<td>' + (pos !== undefined ? pos : '-') + '</td>' +
-                '<td>' + escapeHtml(a.name) + '</td>' +
+                '<td class="player-name">' + escapeHtml(a.name) + '</td>' +
                 '<td><img src="' + escapeHtml(a.flagUrl) + '" class="flag" alt="' + escapeHtml(a.country) + '" onerror="this.style.display=\'none\'"></td>' +
                 '<td' + scoreClass + '>' + escapeHtml(a.scoreDisplay) + '</td>';
+
+            tr.querySelector('.player-name').addEventListener('click', function() {
+                showScorecard(a.name);
+            });
+
             return tr;
         }
 
@@ -577,6 +729,125 @@
             activeCountry = '';
             render();
         });
+
+        // ── Augusta National par values ──
+        var augustaPars = [4, 5, 4, 3, 4, 3, 4, 5, 4, 4, 4, 3, 5, 4, 5, 3, 4, 4];
+
+        // ── Scorecard view ──
+        function showScorecard(name) {
+            var athlete = allAthletes.find(function(a) { return a.name === name; });
+            if (!athlete) return;
+
+            document.querySelector('.controls').style.display = 'none';
+            document.querySelector('.leaderboard').style.display = 'none';
+            var scorecardView = document.getElementById('scorecardView');
+            scorecardView.style.display = 'block';
+
+            var content = document.getElementById('scorecardContent');
+            var html = '';
+
+            // Player header
+            html += '<div class="scorecard-header">';
+            if (athlete.flagUrl) {
+                html += '<img src="' + escapeHtml(athlete.flagUrl) + '" class="flag" alt="' + escapeHtml(athlete.country) + '">';
+            }
+            html += '<h2>' + escapeHtml(athlete.name) + '</h2>';
+            html += '<span class="score-badge">' + escapeHtml(athlete.scoreDisplay) + '</span>';
+            html += '</div>';
+
+            var rounds = athlete.linescores;
+            if (!rounds || !rounds.length) {
+                html += '<div class="no-hole-data">No scoring data available for this player.</div>';
+                content.innerHTML = html;
+                return;
+            }
+
+            rounds.forEach(function(round, rIdx) {
+                var holes = round.linescores || [];
+                var roundScore = round.displayValue || round.value || '';
+
+                html += '<div class="round-label">Round ' + (rIdx + 1);
+                if (roundScore) html += ' &mdash; ' + roundScore;
+                html += '</div>';
+
+                if (!holes.length) {
+                    html += '<div class="no-hole-data">Hole-by-hole data not available for this round.</div>';
+                    return;
+                }
+
+                // Front 9
+                html += buildNineHoles(holes, 0, 9, augustaPars, 'OUT', rIdx);
+
+                // Back 9
+                if (holes.length > 9) {
+                    html += buildNineHoles(holes, 9, Math.min(holes.length, 18), augustaPars, 'IN', rIdx);
+                }
+            });
+
+            content.innerHTML = html;
+        }
+
+        function buildNineHoles(holes, start, end, pars, label, roundIdx) {
+            var html = '<div class="scorecard-table"><table>';
+
+            // Header row (hole numbers)
+            html += '<thead><tr><th>Hole</th>';
+            for (var i = start; i < end; i++) {
+                html += '<th>' + (i + 1) + '</th>';
+            }
+            html += '<th>' + label + '</th>';
+            html += '</tr></thead><tbody>';
+
+            // Par row
+            html += '<tr class="par-row"><td>Par</td>';
+            var parTotal = 0;
+            for (var i = start; i < end; i++) {
+                var p = pars[i] || 4;
+                parTotal += p;
+                html += '<td>' + p + '</td>';
+            }
+            html += '<td class="total-col">' + parTotal + '</td>';
+            html += '</tr>';
+
+            // Score row
+            html += '<tr class="score-row"><td>R' + (roundIdx + 1) + '</td>';
+            var scoreTotal = 0;
+            var hasScores = false;
+            for (var i = start; i < end; i++) {
+                if (i < holes.length && holes[i]) {
+                    var val = holes[i].value !== undefined ? holes[i].value : parseInt(holes[i].displayValue, 10);
+                    if (isNaN(val)) val = 0;
+                    if (val > 0) {
+                        hasScores = true;
+                        scoreTotal += val;
+                        var par = pars[i] || 4;
+                        var cls = '';
+                        if (val <= par - 2) cls = 'eagle';
+                        else if (val === par - 1) cls = 'birdie';
+                        else if (val === par + 1) cls = 'bogey';
+                        else if (val >= par + 2) cls = 'double-bogey';
+                        html += '<td class="' + cls + '">' + val + '</td>';
+                    } else {
+                        html += '<td></td>';
+                    }
+                } else {
+                    html += '<td></td>';
+                }
+            }
+            html += '<td class="total-col">' + (hasScores ? scoreTotal : '') + '</td>';
+            html += '</tr>';
+
+            html += '</tbody></table></div>';
+            return html;
+        }
+
+        function showLeaderboard() {
+            document.querySelector('.controls').style.display = 'flex';
+            document.querySelector('.leaderboard').style.display = 'block';
+            document.getElementById('scorecardView').style.display = 'none';
+        }
+
+        document.getElementById('backToLeaderboard').addEventListener('click', showLeaderboard);
 
         // ── Kick off ──
         load();
