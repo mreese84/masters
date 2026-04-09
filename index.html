@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masters Leaderboard</title>
+    <title>Masters Leaderboard 2026</title>
     <style>
         :root {
             --primary: #107d57;
@@ -75,7 +75,6 @@
         .flag-img { width: 28px; height: auto; border: 1px solid #ddd; vertical-align: middle; }
         .score-neg { color: var(--negative); font-weight: 800; }
         
-        /* Section Divider for players who haven't started */
         .section-divider { 
             background-color: #e8e8e8 !important; 
             font-weight: bold; 
@@ -84,7 +83,6 @@
             font-size: 0.75rem; 
             color: #444; 
             text-transform: uppercase; 
-            letter-spacing: 1px;
         }
         .status-scheduled { color: #888; font-style: italic; font-size: 0.85rem; }
 
@@ -117,38 +115,42 @@
                 </tr>
             </thead>
             <tbody id="leaderboardBody">
-                <tr><td colspan="4">Loading live tournament data...</td></tr>
+                <tr><td colspan="4">Establishing secure connection to live data...</td></tr>
             </tbody>
         </table>
     </div>
 
     <script>
-        // Using a CORS proxy to bypass browser restrictions
+        // Swapped to a more reliable proxy for GitHub Pages
         const TARGET_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941';
-        const API_URL = `https://api.allorigins.win/get?url=${encodeURIComponent(TARGET_URL)}`;
+        const PROXY_URL = 'https://corsproxy.io/?' + encodeURIComponent(TARGET_URL);
 
         let allAthletes = [];
 
         async function init() {
+            const body = document.getElementById('leaderboardBody');
             try {
-                const response = await fetch(API_URL);
-                const proxyData = await response.json();
-                const data = JSON.parse(proxyData.contents);
+                const response = await fetch(PROXY_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
                 
-                const event = data.events[0];
-                const competitors = event.competitions[0].competitors;
+                const data = await response.json();
+                
+                // Strict check for ESPN's data structure
+                if (!data.events || !data.events[0] || !data.events[0].competitions[0]) {
+                    throw new Error('Data structure from ESPN is unexpected.');
+                }
+
+                const competitors = data.events[0].competitions[0].competitors;
                 
                 allAthletes = competitors.map(comp => {
-                    // ESPN status ID 1 = Scheduled (Hasn't started)
-                    const statusId = comp.status.type.id;
-                    const hasStarted = statusId !== "1";
-                    
+                    const statusId = comp.status?.type?.id;
+                    const hasStarted = statusId !== "1"; // 1 is 'Scheduled'
                     const scoreVal = comp.score?.displayValue || "--";
                     
                     return {
-                        fullName: comp.athlete.displayName,
-                        countryFlag: comp.athlete.flag,
-                        countryName: comp.athlete.birthPlace || "International",
+                        fullName: comp.athlete?.displayName || "Unknown Player",
+                        countryFlag: comp.athlete?.flag || "",
+                        countryName: comp.athlete?.birthPlace || "International",
                         scoreDisplay: hasStarted ? scoreVal : "Scheduled",
                         scoreSort: (scoreVal === "E" || !hasStarted) ? 0 : parseInt(scoreVal),
                         hasStarted: hasStarted
@@ -159,7 +161,10 @@
                 renderTable(allAthletes);
             } catch (error) {
                 console.error("Fetch Error:", error);
-                document.getElementById('leaderboardBody').innerHTML = `<tr><td colspan="4">Error: Could not retrieve live data.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="4" style="color:red; padding: 20px;">
+                    <strong>Connection Error:</strong> ${error.message}<br>
+                    Please try refreshing in a few moments.
+                </td></tr>`;
             }
         }
 
@@ -167,10 +172,10 @@
             const body = document.getElementById('leaderboardBody');
             body.innerHTML = '';
             
+            // Standard Competition Ranking (SCR)
             const active = data.filter(a => a.hasStarted).sort((a, b) => a.scoreSort - b.scoreSort);
             const pending = data.filter(a => !a.hasStarted).sort((a, b) => a.fullName.localeCompare(b.fullName));
 
-            // 1. Render Active Players
             let currentRank = 1;
             active.forEach((athlete, index) => {
                 if (index > 0 && athlete.scoreSort > active[index-1].scoreSort) {
@@ -179,7 +184,6 @@
                 body.appendChild(createRow(athlete, currentRank));
             });
 
-            // 2. Render Pending Players Section
             if (pending.length > 0) {
                 const divider = document.createElement('tr');
                 divider.innerHTML = `<td colspan="4" class="section-divider">Not Yet Started</td>`;
@@ -193,12 +197,12 @@
 
         function createRow(athlete, rank) {
             const row = document.createElement('tr');
-            const scoreClass = athlete.hasStarted && athlete.scoreSort < 0 ? 'score-neg' : (athlete.hasStarted ? '' : 'status-scheduled');
+            const scoreClass = (athlete.hasStarted && athlete.scoreSort < 0) ? 'score-neg' : (athlete.hasStarted ? '' : 'status-scheduled');
             
             row.innerHTML = `
                 <td>${rank}</td>
                 <td class="player-cell">${athlete.fullName}</td>
-                <td><img src="${athlete.countryFlag}" class="flag-img" alt="flag"></td>
+                <td><img src="${athlete.countryFlag}" class="flag-img" alt="flag" onerror="this.style.display='none'"></td>
                 <td class="${scoreClass}">${athlete.scoreDisplay}</td>
             `;
             return row;
@@ -206,7 +210,7 @@
 
         function populateCountryFilter() {
             const filter = document.getElementById('countryFilter');
-            const countries = [...new Set(allAthletes.map(a => a.countryName))].sort();
+            const countries = [...new Set(allAthletes.map(a => a.countryName))].filter(c => c).sort();
             countries.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c; opt.textContent = c;
@@ -214,7 +218,6 @@
             });
         }
 
-        // Search Suggestion Logic
         document.getElementById('playerSearch').addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             const suggestions = document.getElementById('suggestions');
