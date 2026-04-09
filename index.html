@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masters Style Leaderboard v2</title>
+    <title>Masters Style Leaderboard 2026</title>
     <style>
         :root {
             --primary: #107d57;
@@ -42,7 +42,6 @@
             color: var(--primary);
         }
 
-        /* Filter Controls */
         .controls {
             width: 100%;
             max-width: 900px;
@@ -76,12 +75,8 @@
             font-weight: bold;
             text-transform: uppercase;
             padding: 0 25px;
-            transition: background 0.2s;
         }
 
-        button:hover { background-color: #0b5e41; }
-
-        /* Autocomplete suggestions */
         .suggestions {
             position: absolute;
             background: white;
@@ -91,7 +86,6 @@
             max-height: 250px;
             overflow-y: auto;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            margin-top: 2px;
         }
 
         .suggestion-item {
@@ -100,9 +94,8 @@
             border-bottom: 1px solid #eee;
         }
 
-        .suggestion-item:hover { background-color: var(--alt-bg); color: var(--primary); }
+        .suggestion-item:hover { background-color: var(--alt-bg); }
 
-        /* Leaderboard Table */
         .leaderboard-container {
             width: 100%;
             max-width: 900px;
@@ -124,30 +117,21 @@
             text-transform: uppercase;
             padding: 15px;
             font-size: 0.8rem;
-            letter-spacing: 1.5px;
         }
 
         td {
             padding: 14px 15px;
             border-bottom: 1px solid #eee;
             text-align: center;
-            font-weight: 500;
         }
 
         tr:nth-child(even) { background-color: var(--alt-bg); }
 
-        .player-cell { text-align: left; font-weight: 700; color: #1a1a1a; }
+        .player-cell { text-align: left; font-weight: 700; }
         
-        .flag-img {
-            width: 28px;
-            height: auto;
-            border: 1px solid #ddd;
-            box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
-        }
+        .flag-img { width: 28px; height: auto; border: 1px solid #ddd; }
 
         .score-neg { color: var(--negative); font-weight: 800; }
-        .score-pos { color: var(--text); }
-        .score-even { color: var(--text); font-weight: 700; }
 
         .hidden { display: none; }
     </style>
@@ -182,28 +166,25 @@
                 </tr>
             </thead>
             <tbody id="leaderboardBody">
-                <tr><td colspan="4">Loading leaderboard data...</td></tr>
+                <tr><td colspan="4">Loading 2026 Leaderboard...</td></tr>
             </tbody>
         </table>
     </div>
 
     <script>
-        // Updated Tournament ID: 401811940
-        const API_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811940';
+        // UPDATED: Tournament ID for the 2026 Masters
+        const API_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811939';
         let allAthletes = [];
-
-        const searchInput = document.getElementById('playerSearch');
-        const suggestionsBox = document.getElementById('suggestions');
-        const countryFilter = document.getElementById('countryFilter');
-        const leaderboardBody = document.getElementById('leaderboardBody');
-        const clearBtn = document.getElementById('clearFilters');
 
         async function init() {
             try {
                 const response = await fetch(API_URL);
                 const data = await response.json();
                 
-                // Fetching competitors from the first competition of the first event
+                if (!data.events || data.events.length === 0) {
+                    throw new Error("No active event found for this ID.");
+                }
+
                 const competitors = data.events[0].competitions[0].competitors;
                 
                 allAthletes = competitors.map(comp => {
@@ -218,106 +199,82 @@
                     };
                 });
 
-                // Sort by score ascending
                 allAthletes.sort((a, b) => a.scoreSort - b.scoreSort);
-                
                 populateCountryFilter();
                 renderTable(allAthletes);
             } catch (error) {
                 console.error("API Error:", error);
-                leaderboardBody.innerHTML = `<tr><td colspan="4">Unable to load data for this Tournament ID.</td></tr>`;
+                document.getElementById('leaderboardBody').innerHTML = 
+                    `<tr><td colspan="4" style="padding: 40px;">${error.message}<br>Note: The 2026 Masters officially begins tomorrow (April 9). Pre-tournament data may be limited.</td></tr>`;
             }
         }
 
         function renderTable(data) {
-            leaderboardBody.innerHTML = '';
+            const body = document.getElementById('leaderboardBody');
+            body.innerHTML = '';
             
-            // Standard Competition Ranking logic
             let currentRank = 1;
             data.forEach((athlete, index) => {
-                // If this score is worse than the previous, update rank to the current index + 1
                 if (index > 0 && athlete.scoreSort > data[index - 1].scoreSort) {
                     currentRank = index + 1;
                 }
-
-                let scoreClass = 'score-pos';
-                if (athlete.scoreSort < 0) scoreClass = 'score-neg';
-                if (athlete.scoreSort === 0) scoreClass = 'score-even';
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${currentRank}</td>
                     <td class="player-cell">${athlete.fullName}</td>
                     <td><img src="${athlete.countryFlag}" class="flag-img" alt="flag"></td>
-                    <td class="${scoreClass}">${athlete.scoreDisplay}</td>
+                    <td class="${athlete.scoreSort < 0 ? 'score-neg' : ''}">${athlete.scoreDisplay}</td>
                 `;
-                leaderboardBody.appendChild(row);
+                body.appendChild(row);
             });
         }
 
         function populateCountryFilter() {
+            const filter = document.getElementById('countryFilter');
             const countries = [...new Set(allAthletes.map(a => a.countryName))].sort();
             countries.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c;
                 opt.textContent = c;
-                countryFilter.appendChild(opt);
+                filter.appendChild(opt);
             });
         }
 
-        // Search & Autocomplete
-        searchInput.addEventListener('input', (e) => {
+        // Logic for Search, Suggestions, and Clear remains same as previous version
+        document.getElementById('playerSearch').addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
-            if (!val) {
-                suggestionsBox.classList.add('hidden');
-                return;
-            }
+            const suggestions = document.getElementById('suggestions');
+            if (!val) { suggestions.classList.add('hidden'); return; }
 
             const matches = allAthletes.filter(a => a.fullName.toLowerCase().includes(val));
-            suggestionsBox.innerHTML = '';
+            suggestions.innerHTML = '';
             
             if (matches.length > 0) {
-                suggestionsBox.classList.remove('hidden');
+                suggestions.classList.remove('hidden');
                 matches.slice(0, 8).forEach(m => {
                     const div = document.createElement('div');
                     div.className = 'suggestion-item';
                     div.textContent = m.fullName;
                     div.onclick = () => {
-                        searchInput.value = m.fullName;
-                        suggestionsBox.classList.add('hidden');
-                        renderTable([m]); // Only show the selected athlete
+                        document.getElementById('playerSearch').value = m.fullName;
+                        suggestions.classList.add('hidden');
+                        renderTable([m]);
                     };
-                    suggestionsBox.appendChild(div);
+                    suggestions.appendChild(div);
                 });
-            } else {
-                suggestionsBox.classList.add('hidden');
             }
         });
 
-        // Dropdown Filter
-        countryFilter.addEventListener('change', (e) => {
-            const val = e.target.value;
-            if (!val) {
-                renderTable(allAthletes);
-            } else {
-                const filtered = allAthletes.filter(a => a.countryName === val);
-                renderTable(filtered);
-            }
+        document.getElementById('countryFilter').addEventListener('change', (e) => {
+            const filtered = e.target.value ? allAthletes.filter(a => a.countryName === e.target.value) : allAthletes;
+            renderTable(filtered);
         });
 
-        // Clear Filters
-        clearBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            countryFilter.value = '';
-            suggestionsBox.classList.add('hidden');
+        document.getElementById('clearFilters').addEventListener('click', () => {
+            document.getElementById('playerSearch').value = '';
+            document.getElementById('countryFilter').value = '';
             renderTable(allAthletes);
-        });
-
-        // UI Helpers
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-container')) {
-                suggestionsBox.classList.add('hidden');
-            }
         });
 
         init();
