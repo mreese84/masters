@@ -39,28 +39,31 @@
             letter-spacing: 4px;
             margin: 10px 0;
             font-size: 2.5rem;
+            color: var(--primary);
         }
 
-        /* Controls Section */
+        /* Filter Controls */
         .controls {
             width: 100%;
             max-width: 900px;
             display: flex;
             gap: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             flex-wrap: wrap;
         }
 
         .search-container {
             position: relative;
             flex: 2;
+            min-width: 250px;
         }
 
         input, select, button {
-            padding: 10px;
+            padding: 12px;
             border: 1px solid var(--border);
             border-radius: 4px;
-            font-size: 1rem;
+            font-size: 0.95rem;
+            outline-color: var(--primary);
         }
 
         input { width: 100%; box-sizing: border-box; }
@@ -71,10 +74,12 @@
             cursor: pointer;
             border: none;
             font-weight: bold;
-            transition: opacity 0.2s;
+            text-transform: uppercase;
+            padding: 0 25px;
+            transition: background 0.2s;
         }
 
-        button:hover { opacity: 0.9; }
+        button:hover { background-color: #0b5e41; }
 
         /* Autocomplete suggestions */
         .suggestions {
@@ -82,24 +87,26 @@
             background: white;
             border: 1px solid var(--border);
             width: 100%;
-            z-index: 10;
-            max-height: 200px;
+            z-index: 100;
+            max-height: 250px;
             overflow-y: auto;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-top: 2px;
         }
 
         .suggestion-item {
-            padding: 10px;
+            padding: 12px;
             cursor: pointer;
+            border-bottom: 1px solid #eee;
         }
 
-        .suggestion-item:hover { background-color: var(--alt-bg); }
+        .suggestion-item:hover { background-color: var(--alt-bg); color: var(--primary); }
 
         /* Leaderboard Table */
         .leaderboard-container {
             width: 100%;
             max-width: 900px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
         }
 
         table {
@@ -116,12 +123,12 @@
         th {
             text-transform: uppercase;
             padding: 15px;
-            font-size: 0.85rem;
-            letter-spacing: 1px;
+            font-size: 0.8rem;
+            letter-spacing: 1.5px;
         }
 
         td {
-            padding: 12px 15px;
+            padding: 14px 15px;
             border-bottom: 1px solid #eee;
             text-align: center;
             font-weight: 500;
@@ -129,17 +136,18 @@
 
         tr:nth-child(even) { background-color: var(--alt-bg); }
 
-        .player-cell { text-align: left; font-weight: 700; }
+        .player-cell { text-align: left; font-weight: 700; color: #1a1a1a; }
         
         .flag-img {
-            width: 24px;
+            width: 28px;
             height: auto;
-            border: 1px solid #eee;
-            vertical-align: middle;
+            border: 1px solid #ddd;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
         }
 
         .score-neg { color: var(--negative); font-weight: 800; }
         .score-pos { color: var(--text); }
+        .score-even { color: var(--text); font-weight: 700; }
 
         .hidden { display: none; }
     </style>
@@ -152,7 +160,7 @@
 
     <div class="controls">
         <div class="search-container">
-            <input type="text" id="playerSearch" placeholder="Search Athlete..." autocomplete="off">
+            <input type="text" id="playerSearch" placeholder="Search for an athlete..." autocomplete="off">
             <div id="suggestions" class="suggestions hidden"></div>
         </div>
         
@@ -160,28 +168,29 @@
             <option value="">All Countries</option>
         </select>
 
-        <button id="clearFilters">Clear Filters</button>
+        <button id="clearFilters">Clear</button>
     </div>
 
     <div class="leaderboard-container">
         <table id="leaderboard">
             <thead>
                 <tr>
-                    <th>Pos</th>
-                    <th style="text-align: left;">Player</th>
-                    <th>Country</th>
-                    <th>Score</th>
+                    <th width="10%">Pos</th>
+                    <th width="50%" style="text-align: left;">Player</th>
+                    <th width="20%">Country</th>
+                    <th width="20%">Score</th>
                 </tr>
             </thead>
             <tbody id="leaderboardBody">
-                </tbody>
+                <tr><td colspan="4">Loading leaderboard data...</td></tr>
+            </tbody>
         </table>
     </div>
 
     <script>
+        // Updated Tournament ID: 401811940
         const API_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811940';
         let allAthletes = [];
-        let filteredAthletes = [];
 
         const searchInput = document.getElementById('playerSearch');
         const suggestionsBox = document.getElementById('suggestions');
@@ -194,52 +203,53 @@
                 const response = await fetch(API_URL);
                 const data = await response.json();
                 
-                // Parse athletes from ESPN structure
-                // Note: ESPN data usually sits in competitions[0].competitors
+                // Fetching competitors from the first competition of the first event
                 const competitors = data.events[0].competitions[0].competitors;
                 
                 allAthletes = competitors.map(comp => {
                     const scoreVal = comp.score?.displayValue || "E";
                     return {
                         id: comp.id,
-                        name: comp.athlete.displayName,
-                        country: comp.athlete.flag, // PNG URL usually provided here
-                        countryName: comp.athlete.birthPlace || "Unknown",
-                        scoreStr: scoreVal,
-                        scoreInt: scoreVal === "E" ? 0 : parseInt(scoreVal),
-                        flag: comp.athlete.flag
+                        fullName: comp.athlete.displayName,
+                        countryFlag: comp.athlete.flag,
+                        countryName: comp.athlete.birthPlace || "International",
+                        scoreDisplay: scoreVal,
+                        scoreSort: scoreVal === "E" ? 0 : parseInt(scoreVal)
                     };
                 });
 
-                // Sort by score initially
-                allAthletes.sort((a, b) => a.scoreInt - b.scoreInt);
+                // Sort by score ascending
+                allAthletes.sort((a, b) => a.scoreSort - b.scoreSort);
                 
                 populateCountryFilter();
                 renderTable(allAthletes);
             } catch (error) {
-                console.error("Error fetching data:", error);
-                leaderboardBody.innerHTML = `<tr><td colspan="4">Error loading data. Tournament ID may be inactive.</td></tr>`;
+                console.error("API Error:", error);
+                leaderboardBody.innerHTML = `<tr><td colspan="4">Unable to load data for this Tournament ID.</td></tr>`;
             }
         }
 
         function renderTable(data) {
             leaderboardBody.innerHTML = '';
             
-            // Calculate Ranks (Standard Competition Ranking)
+            // Standard Competition Ranking logic
             let currentRank = 1;
             data.forEach((athlete, index) => {
-                if (index > 0 && athlete.scoreInt > data[index - 1].scoreInt) {
+                // If this score is worse than the previous, update rank to the current index + 1
+                if (index > 0 && athlete.scoreSort > data[index - 1].scoreSort) {
                     currentRank = index + 1;
                 }
 
-                const scoreClass = athlete.scoreInt < 0 ? 'score-neg' : 'score-pos';
+                let scoreClass = 'score-pos';
+                if (athlete.scoreSort < 0) scoreClass = 'score-neg';
+                if (athlete.scoreSort === 0) scoreClass = 'score-even';
+
                 const row = document.createElement('tr');
-                
                 row.innerHTML = `
-                    <td>${athlete.scoreInt === 0 && athlete.scoreStr !== "E" ? '-' : currentRank}</td>
-                    <td class="player-cell">${athlete.name.toUpperCase()}</td>
-                    <td><img src="${athlete.flag}" class="flag-img" alt="flag"></td>
-                    <td class="${scoreClass}">${athlete.scoreStr}</td>
+                    <td>${currentRank}</td>
+                    <td class="player-cell">${athlete.fullName}</td>
+                    <td><img src="${athlete.countryFlag}" class="flag-img" alt="flag"></td>
+                    <td class="${scoreClass}">${athlete.scoreDisplay}</td>
                 `;
                 leaderboardBody.appendChild(row);
             });
@@ -255,7 +265,7 @@
             });
         }
 
-        // Search & Autocomplete logic
+        // Search & Autocomplete
         searchInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             if (!val) {
@@ -263,19 +273,19 @@
                 return;
             }
 
-            const matches = allAthletes.filter(a => a.name.toLowerCase().includes(val));
+            const matches = allAthletes.filter(a => a.fullName.toLowerCase().includes(val));
             suggestionsBox.innerHTML = '';
             
             if (matches.length > 0) {
                 suggestionsBox.classList.remove('hidden');
-                matches.slice(0, 5).forEach(m => {
+                matches.slice(0, 8).forEach(m => {
                     const div = document.createElement('div');
                     div.className = 'suggestion-item';
-                    div.textContent = m.name;
+                    div.textContent = m.fullName;
                     div.onclick = () => {
-                        searchInput.value = m.name;
+                        searchInput.value = m.fullName;
                         suggestionsBox.classList.add('hidden');
-                        renderTable([m]);
+                        renderTable([m]); // Only show the selected athlete
                     };
                     suggestionsBox.appendChild(div);
                 });
@@ -284,6 +294,7 @@
             }
         });
 
+        // Dropdown Filter
         countryFilter.addEventListener('change', (e) => {
             const val = e.target.value;
             if (!val) {
@@ -294,6 +305,7 @@
             }
         });
 
+        // Clear Filters
         clearBtn.addEventListener('click', () => {
             searchInput.value = '';
             countryFilter.value = '';
@@ -301,7 +313,7 @@
             renderTable(allAthletes);
         });
 
-        // Close suggestions when clicking outside
+        // UI Helpers
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.search-container')) {
                 suggestionsBox.classList.add('hidden');
