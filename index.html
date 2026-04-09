@@ -3,257 +3,470 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masters Leaderboard</title>
+    <title>2026 Masters Leaderboard</title>
     <style>
-        :root {
-            --primary: #107d57;
-            --bg: #ffffff;
-            --alt-bg: #f7f7f7;
-            --text: #3b3939;
-            --negative: #c73232;
-            --border: #d1d1d1;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0; padding: 20px;
-            display: flex; flex-direction: column; align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #fff;
+            color: #3b3939;
+            padding: 20px;
         }
 
-        .header {
-            width: 100%; max-width: 900px; text-align: center;
-            border-bottom: 4px solid var(--primary);
-            margin-bottom: 20px; padding-bottom: 10px;
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
         }
 
-        .header h1 { text-transform: uppercase; letter-spacing: 4px; color: var(--primary); font-size: 2.5rem; }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #107d57;
+        }
 
         .controls {
-            width: 100%; max-width: 900px;
-            display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap;
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            align-items: flex-end;
         }
 
-        .search-container { position: relative; flex: 2; min-width: 250px; }
-        input, select, button { padding: 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.95rem; }
-        input { width: 100%; box-sizing: border-box; outline-color: var(--primary); }
-        button { background-color: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; padding: 0 25px; }
-
-        .suggestions {
-            position: absolute; background: white; border: 1px solid var(--border); width: 100%;
-            z-index: 100; max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
 
-        .suggestion-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; }
-        .suggestion-item:hover { background-color: var(--alt-bg); color: var(--primary); }
-
-        .leaderboard-container { width: 100%; max-width: 900px; border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        table { width: 100%; border-collapse: collapse; background: white; }
-        thead { background-color: var(--primary); color: white; }
-        th { text-transform: uppercase; padding: 15px; font-size: 0.8rem; letter-spacing: 1px; }
-        td { padding: 14px 15px; border-bottom: 1px solid #eee; text-align: center; font-weight: 500; }
-        tr:nth-child(even) { background-color: var(--alt-bg); }
-
-        .player-cell { text-align: left; font-weight: 700; color: #1a1a1a; }
-        .flag-img { width: 28px; height: auto; border: 1px solid #ddd; vertical-align: middle; }
-        .score-neg { color: var(--negative); font-weight: 800; }
-        
-        .section-divider { 
-            background-color: #e8e8e8 !important; 
-            font-weight: bold; text-align: left; 
-            padding: 12px 15px; font-size: 0.75rem; 
-            color: #444; text-transform: uppercase; 
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #3b3939;
         }
-        .status-scheduled { color: #888; font-style: italic; font-size: 0.85rem; }
 
-        .hidden { display: none; }
+        input[type="text"],
+        select {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            color: #3b3939;
+            width: 250px;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #107d57;
+            box-shadow: 0 0 0 2px rgba(16, 125, 87, 0.1);
+        }
+
+        .autocomplete-list {
+            position: absolute;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-top: none;
+            list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
+            width: 250px;
+            z-index: 10;
+            display: none;
+        }
+
+        .autocomplete-list.active {
+            display: block;
+        }
+
+        .autocomplete-list li {
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .autocomplete-list li:hover {
+            background-color: #f7f7f7;
+        }
+
+        .autocomplete-list li.selected {
+            background-color: #f7f7f7;
+        }
+
+        .control-group.search-wrapper {
+            position: relative;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #107d57;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0d5f44;
+        }
+
+        button:active {
+            background-color: #0a4a35;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        thead {
+            background-color: #107d57;
+            color: #fff;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #f7f7f7;
+            font-size: 14px;
+        }
+
+        tbody tr:hover {
+            background-color: #f7f7f7;
+        }
+
+        .position {
+            font-weight: 600;
+            color: #107d57;
+            width: 80px;
+        }
+
+        .player {
+            font-weight: 500;
+        }
+
+        .country-flag {
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+            border-radius: 2px;
+        }
+
+        .score {
+            font-weight: 600;
+            text-align: right;
+            width: 80px;
+        }
+
+        .score.negative {
+            color: #c73232;
+        }
+
+        .score.even {
+            color: #3b3939;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            input[type="text"],
+            select {
+                width: 100%;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            th, td {
+                padding: 10px;
+                font-size: 12px;
+            }
+
+            .country-flag {
+                width: 24px;
+                height: 24px;
+            }
+        }
     </style>
 </head>
 <body>
+    <div class="container">
+        <h1>2026 Masters Leaderboard</h1>
 
-    <div class="header">
-        <h1>Leaders</h1>
-    </div>
+        <div class="controls">
+            <div class="control-group search-wrapper">
+                <label for="search">Search Players</label>
+                <input 
+                    type="text" 
+                    id="search" 
+                    placeholder="Type player name..."
+                    autocomplete="off"
+                >
+                <ul class="autocomplete-list" id="autocompleteList"></ul>
+            </div>
 
-    <div class="controls">
-        <div class="search-container">
-            <input type="text" id="playerSearch" placeholder="Search for an athlete..." autocomplete="off">
-            <div id="suggestions" class="suggestions hidden"></div>
+            <div class="control-group">
+                <label for="countryFilter">Filter by Country</label>
+                <select id="countryFilter">
+                    <option value="">All Countries</option>
+                </select>
+            </div>
+
+            <button id="clearFilters">Clear Filters</button>
         </div>
-        <select id="countryFilter"><option value="">All Countries</option></select>
-        <button id="clearFilters">Clear Filters</button>
-    </div>
 
-    <div class="leaderboard-container">
         <table id="leaderboard">
             <thead>
                 <tr>
-                    <th width="10%">Pos</th>
-                    <th width="50%" style="text-align: left;">Player</th>
-                    <th width="20%">Country</th>
-                    <th width="20%">Score</th>
+                    <th>Position</th>
+                    <th>Player</th>
+                    <th>Country</th>
+                    <th style="text-align: right;">Score</th>
                 </tr>
             </thead>
             <tbody id="leaderboardBody">
-                <tr><td colspan="4">Searching API response for competitors...</td></tr>
+                <tr class="empty-state">
+                    <td colspan="4">Loading leaderboard...</td>
+                </tr>
             </tbody>
         </table>
     </div>
 
     <script>
+        const API_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941';
+        
         let allAthletes = [];
+        let filteredAthletes = [];
+        let selectedPlayer = null;
+        let selectedCountry = null;
 
-        // Recursive search function to find all athlete entries regardless of nesting
-        function findCompetitors(obj, results = []) {
-            if (!obj || typeof obj !== 'object') return results;
-
-            // Look for objects that contain an 'athlete' key as per the provided snippet
-            if (obj.athlete && (obj.athlete.fullName || obj.athlete.displayName)) {
-                results.push(obj);
-            }
-
-            for (const key in obj) {
-                if (obj.hasOwnProperty(key)) {
-                    findCompetitors(obj[key], results);
-                }
-            }
-            return results;
-        }
-
-        window.espnCallback = function(data) {
-            const body = document.getElementById('leaderboardBody');
+        // Fetch data from ESPN API
+        async function fetchLeaderboard() {
             try {
-                // Find all competitor entries anywhere in the JSON
-                const rawCompetitors = findCompetitors(data);
+                const response = await fetch(API_URL);
+                const data = await response.json();
                 
-                if (rawCompetitors.length === 0) throw new Error("No athletes found in the JSON response.");
-
-                // Use a Map to ensure unique athletes (by fullName)
-                const uniqueMap = new Map();
-
-                rawCompetitors.forEach(comp => {
-                    const athlete = comp.athlete;
-                    const rawScore = comp.score; 
-                    const name = athlete.fullName || athlete.displayName;
-
-                    // If we haven't added this athlete yet
-                    if (!uniqueMap.has(name)) {
-                        const hasStarted = rawScore !== null && rawScore !== undefined && rawScore !== "";
-                        const scoreDisplay = hasStarted ? rawScore : "Scheduled";
-                        let scoreSort = 0;
-                        if (hasStarted) {
-                            scoreSort = (rawScore === "E" || rawScore === "Even") ? 0 : parseInt(rawScore);
-                        }
-
-                        uniqueMap.set(name, {
-                            fullName: name,
-                            countryFlag: athlete.flag?.href || "",
-                            countryName: athlete.flag?.alt || "International",
-                            scoreDisplay: scoreDisplay,
-                            scoreSort: scoreSort,
-                            hasStarted: hasStarted
-                        });
-                    }
+                // Extract athletes from the API response
+                allAthletes = data.events[0].competitions[0].competitors.map(competitor => {
+                    const score = competitor.score || 0;
+                    const scoreStr = competitor.displayScore || 'E';
+                    const countryCode = competitor.country || 'US';
+                    
+                    return {
+                        id: competitor.id,
+                        name: competitor.athlete?.displayName || 'Unknown',
+                        country: countryCode,
+                        score: scoreStr === 'E' ? 0 : parseInt(scoreStr),
+                        displayScore: scoreStr
+                    };
                 });
 
-                allAthletes = Array.from(uniqueMap.values());
                 populateCountryFilter();
-                renderTable(allAthletes);
-            } catch (e) {
-                console.error("Deep Parse Error:", e);
-                body.innerHTML = `<tr><td colspan="4" style="color:red; padding:20px;">Parse Error: ${e.message}</td></tr>`;
+                renderLeaderboard();
+            } catch (error) {
+                console.error('Error fetching leaderboard:', error);
+                document.getElementById('leaderboardBody').innerHTML = 
+                    '<tr class="empty-state"><td colspan="4">Error loading leaderboard. Please try again.</td></tr>';
             }
-        };
-
-        function init() {
-            const script = document.createElement('script');
-            script.src = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941?callback=espnCallback';
-            document.body.appendChild(script);
         }
 
-        function renderTable(data) {
-            const body = document.getElementById('leaderboardBody');
-            body.innerHTML = '';
+        // Populate country dropdown
+        function populateCountryFilter() {
+            const countries = [...new Set(allAthletes.map(a => a.country))].sort();
+            const select = document.getElementById('countryFilter');
             
-            const active = data.filter(a => a.hasStarted).sort((a, b) => a.scoreSort - b.scoreSort);
-            const pending = data.filter(a => !a.hasStarted).sort((a, b) => a.fullName.localeCompare(b.fullName));
+            countries.forEach(country => {
+                const option = document.createElement('option');
+                option.value = country;
+                option.textContent = getCountryName(country);
+                select.appendChild(option);
+            });
+        }
 
+        // Convert country code to country name
+        function getCountryName(code) {
+            const countries = {
+                'US': 'United States',
+                'GB': 'England',
+                'IE': 'Ireland',
+                'AU': 'Australia',
+                'CA': 'Canada',
+                'ZA': 'South Africa',
+                'ES': 'Spain',
+                'IT': 'Italy',
+                'FR': 'France',
+                'DE': 'Germany',
+                'NZ': 'New Zealand',
+                'SE': 'Sweden',
+                'NO': 'Norway',
+                'DK': 'Denmark',
+                'JP': 'Japan',
+                'KR': 'South Korea',
+                'MX': 'Mexico',
+                'AR': 'Argentina',
+                'BR': 'Brazil',
+                'TH': 'Thailand',
+                'IN': 'India',
+                'SG': 'Singapore',
+                'MY': 'Malaysia',
+                'PH': 'Philippines',
+                'ID': 'Indonesia',
+                'VN': 'Vietnam',
+                'CN': 'China',
+                'TW': 'Taiwan',
+                'HK': 'Hong Kong',
+                'TR': 'Turkey',
+                'ZM': 'Zambia',
+                'NG': 'Nigeria',
+                'EG': 'Egypt',
+                'MA': 'Morocco',
+                'UG': 'Uganda',
+                'KE': 'Kenya'
+            };
+            return countries[code] || code;
+        }
+
+        // Get flag emoji for country
+        function getFlagEmoji(countryCode) {
+            const codePoints = countryCode
+                .toUpperCase()
+                .split('')
+                .map(char => 127397 + char.charCodeAt());
+            return String.fromCodePoint(...codePoints);
+        }
+
+        // Calculate rankings with ties
+        function calculateRankings(athletes) {
+            const sorted = [...athletes].sort((a, b) => a.score - b.score);
+            const rankings = {};
             let currentRank = 1;
-            active.forEach((athlete, index) => {
-                if (index > 0 && athlete.scoreSort > active[index-1].scoreSort) {
+
+            sorted.forEach((athlete, index) => {
+                if (index > 0 && sorted[index].score !== sorted[index - 1].score) {
                     currentRank = index + 1;
                 }
-                body.appendChild(createRow(athlete, currentRank));
+                rankings[athlete.id] = currentRank;
             });
 
-            if (pending.length > 0) {
-                const divider = document.createElement('tr');
-                divider.innerHTML = `<td colspan="4" class="section-divider">Not Yet Started</td>`;
-                body.appendChild(divider);
-                pending.forEach(a => body.appendChild(createRow(a, "-")));
-            }
+            return rankings;
         }
 
-        function createRow(athlete, rank) {
-            const tr = document.createElement('tr');
-            const isNeg = athlete.hasStarted && athlete.scoreSort < 0;
-            const scoreClass = isNeg ? 'score-neg' : (athlete.hasStarted ? '' : 'status-scheduled');
+        // Render leaderboard
+        function renderLeaderboard() {
+            filteredAthletes = allAthletes.filter(athlete => {
+                const matchesPlayer = !selectedPlayer || athlete.id === selectedPlayer;
+                const matchesCountry = !selectedCountry || athlete.country === selectedCountry;
+                return matchesPlayer && matchesCountry;
+            });
+
+            const rankings = calculateRankings(filteredAthletes);
+            const sorted = [...filteredAthletes].sort((a, b) => a.score - b.score);
+
+            const tbody = document.getElementById('leaderboardBody');
             
-            tr.innerHTML = `
-                <td>${rank}</td>
-                <td class="player-cell">${athlete.fullName}</td>
-                <td><img src="${athlete.countryFlag}" class="flag-img" alt="${athlete.countryName}" onerror="this.style.display='none'"></td>
-                <td class="${scoreClass}">${athlete.scoreDisplay}</td>
-            `;
-            return tr;
+            if (sorted.length === 0) {
+                tbody.innerHTML = '<tr class="empty-state"><td colspan="4">No athletes found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = sorted.map(athlete => {
+                const rank = rankings[athlete.id];
+                const flag = getFlagEmoji(athlete.country);
+                const scoreClass = athlete.score < 0 ? 'negative' : athlete.score === 0 ? 'even' : '';
+                const scoreDisplay = athlete.score > 0 ? `+${athlete.score}` : athlete.displayScore;
+
+                return `
+                    <tr>
+                        <td class="position">${rank}</td>
+                        <td class="player">${athlete.name}</td>
+                        <td>${flag} ${getCountryName(athlete.country)}</td>
+                        <td class="score ${scoreClass}">${scoreDisplay}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
-        function populateCountryFilter() {
-            const filter = document.getElementById('countryFilter');
-            const countries = [...new Set(allAthletes.map(a => a.countryName))].filter(Boolean).sort();
-            filter.innerHTML = '<option value="">All Countries</option>';
-            countries.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c; opt.textContent = c;
-                filter.appendChild(opt);
-            });
-        }
-
-        const searchInput = document.getElementById('playerSearch');
-        const suggBox = document.getElementById('suggestions');
+        // Search functionality
+        const searchInput = document.getElementById('search');
+        const autocompleteList = document.getElementById('autocompleteList');
 
         searchInput.addEventListener('input', (e) => {
-            const val = e.target.value.toLowerCase();
-            if (!val) { suggBox.classList.add('hidden'); return; }
-            const matches = allAthletes.filter(a => a.fullName.toLowerCase().includes(val));
-            suggBox.innerHTML = '';
-            if (matches.length > 0) {
-                suggBox.classList.remove('hidden');
-                matches.slice(0, 8).forEach(m => {
-                    const div = document.createElement('div');
-                    div.className = 'suggestion-item'; div.textContent = m.fullName;
-                    div.onclick = () => {
-                        searchInput.value = m.fullName;
-                        suggBox.classList.add('hidden');
-                        renderTable([m]);
-                    };
-                    suggBox.appendChild(div);
-                });
-            } else { suggBox.classList.add('hidden'); }
+            const query = e.target.value.toLowerCase();
+            
+            if (!query) {
+                autocompleteList.classList.remove('active');
+                selectedPlayer = null;
+                renderLeaderboard();
+                return;
+            }
+
+            const matches = allAthletes.filter(a => 
+                a.name.toLowerCase().includes(query)
+            );
+
+            if (matches.length === 0) {
+                autocompleteList.classList.remove('active');
+                return;
+            }
+
+            autocompleteList.innerHTML = matches.map(athlete => `
+                <li data-id="${athlete.id}">${athlete.name}</li>
+            `).join('');
+            autocompleteList.classList.add('active');
         });
 
+        autocompleteList.addEventListener('click', (e) => {
+            if (e.target.tagName === 'LI') {
+                const athleteId = e.target.getAttribute('data-id');
+                const athlete = allAthletes.find(a => a.id === athleteId);
+                
+                selectedPlayer = athleteId;
+                searchInput.value = athlete.name;
+                autocompleteList.classList.remove('active');
+                renderLeaderboard();
+            }
+        });
+
+        // Country filter
         document.getElementById('countryFilter').addEventListener('change', (e) => {
-            renderTable(e.target.value ? allAthletes.filter(a => a.countryName === e.target.value) : allAthletes);
+            selectedCountry = e.target.value || null;
+            renderLeaderboard();
         });
 
+        // Clear filters
         document.getElementById('clearFilters').addEventListener('click', () => {
+            selectedPlayer = null;
+            selectedCountry = null;
             searchInput.value = '';
             document.getElementById('countryFilter').value = '';
-            renderTable(allAthletes);
+            autocompleteList.classList.remove('active');
+            renderLeaderboard();
         });
 
-        init();
+        // Initialize
+        fetchLeaderboard();
     </script>
 </body>
 </html>
