@@ -654,10 +654,17 @@
                     }
                     positions.push(rank);
                 }
+                // Count occurrences of each rank to determine ties
+                var rankCounts = {};
+                positions.forEach(function (r) { rankCounts[r] = (rankCounts[r] || 0) + 1; });
+                // Format with "T" prefix for ties
+                var posLabels = positions.map(function (r) {
+                    return rankCounts[r] > 1 ? 'T' + r : String(r);
+                });
             }
 
             started.forEach(function (a, i) {
-                tbody.appendChild(buildRow(a, positions[i]));
+                tbody.appendChild(buildRow(a, posLabels[i]));
             });
 
             if (notStarted.length) {
