@@ -659,6 +659,7 @@
                         scoreNum: parseScore(started ? scoreRaw : 'E'),
                         onCourse: onCourse,
                         linescores: c.linescores || [],
+                        statistics: c.statistics || [],
                         thru: computeThru(c.linescores)
                     });
                 });
@@ -738,9 +739,66 @@
 
         var COURSE_PAR = 72; // Augusta National total par
 
+        function getTeeTime(a) {
+            // Look for tee time in the latest round's statistics or linescores statistics
+            // ESPN stores it as the last stat entry in categories[0].stats
+            var linescores = a.linescores || [];
+            for (var r = linescores.length - 1; r >= 0; r--) {
+                var rd = linescores[r];
+                if (rd.statistics && rd.statistics.categories) {
+                    var cats = rd.statistics.categories;
+                    for (var c = 0; c < cats.length; c++) {
+                        var stats = cats[c].stats;
+                        if (stats && stats.length) {
+                            var last = stats[stats.length - 1];
+                            var dv = last.displayValue || '';
+                            // Tee time looks like "Thu Apr 09 09:19:00 PDT 2026"
+                            if (dv && /\d{1,2}:\d{2}/.test(dv)) {
+                                // Extract just the time portion (HH:MM)
+                                var match = dv.match(/(\d{1,2}:\d{2}):\d{2}\s*(AM|PM|[A-Z]{2,4})/i);
+                                if (match) {
+                                    var timeParts = match[1].split(':');
+                                    var hrs = parseInt(timeParts[0], 10);
+                                    var mins = timeParts[1];
+                                    // Convert EDT (UTC-4) to CDT (UTC-5): subtract 1 hour
+                                    hrs -= 1;
+                                    if (hrs < 0) hrs += 24;
+                                    var ampm = hrs >= 12 ? 'PM' : 'AM';
+                                    if (hrs > 12) hrs -= 12;
+                                    if (hrs === 0) hrs = 12;
+                                    return hrs + ':' + mins + ' ' + ampm;
+                                }
+                                return dv;
+                            }
+                        }
+                    }
+                }
+            }
+            return '';
+        }
+
         function getTodayScore(a) {
             // Find the latest round with hole data
             if (!a.linescores || !a.linescores.length) return { display: '', thru: '' };
+
+            // Check if there's a round with no holes played (upcoming round)
+            var lastRound = a.linescores[a.linescores.length - 1];
+            var lastHoles = lastRound.linescores || [];
+            var lastHolesPlayed = 0;
+            for (var h = 0; h < lastHoles.length; h++) {
+                if (lastHoles[h] && lastHoles[h].value > 0) lastHolesPlayed++;
+            }
+
+            // If the latest round has no holes played but there's a prior round, 
+            // the player hasn't started their new round yet
+            if (lastHolesPlayed === 0 && a.linescores.length > 1) {
+                var teeTime = getTeeTime(a);
+                if (teeTime) {
+                    return { display: teeTime, thru: '', isTeeTime: true };
+                }
+                return { display: '', thru: '' };
+            }
+
             var latestIdx = -1;
             for (var r = a.linescores.length - 1; r >= 0; r--) {
                 var holes = a.linescores[r].linescores;
@@ -808,7 +866,9 @@
             var rounds = getRoundStrokes(a);
             var today = getTodayScore(a);
             var todayHtml = '';
-            if (today.display) {
+            if (today.isTeeTime) {
+                todayHtml = '<span class="thru-info">' + escapeHtml(today.display) + '</span>';
+            } else if (today.display) {
                 todayHtml = escapeHtml(today.display);
                 if (today.thru) {
                     if (today.thru === 'F') {
