@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Masters Tournament — Augusta Style</title>
+    <style>
+        :root {
+            --primary: #107d57;
+            --bg: #ffffff;
+            --alt-bg: #f7f7f7;
+            --text: #3b3939;
+            --negative: #c73232;
+            --border: #d1d1d1;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: "Georgia", "Times New Roman", serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px 60px;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url('images/azalea-pattern.jpg');
+            background-repeat: repeat;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .header, .leaderboard, .nav-menu-wrapper {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Nav Menu ── */
+        .nav-menu-wrapper {
+            width: 100%;
+            max-width: 940px;
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 8px;
+            z-index: 400;
+        }
+
+        .menu-toggle {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            line-height: 1;
+            transition: background 0.2s;
+        }
+        .menu-toggle:hover { background: #0b5e40; }
+
+        .nav-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            min-width: 180px;
+            display: none;
+            overflow: hidden;
+            z-index: 300;
+        }
+        .nav-dropdown.open { display: block; }
+
+        .nav-dropdown a {
+            display: block;
+            padding: 12px 18px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 0.9rem;
+            color: var(--text);
+            text-decoration: none;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s;
+        }
+        .nav-dropdown a:last-child { border-bottom: none; }
+        .nav-dropdown a:hover { background: var(--primary); color: #fff; }
+
+        /* ── Header ── */
+        .header {
+            width: 100%;
+            max-width: 940px;
+            text-align: center;
+            padding-bottom: 18px;
+            margin-bottom: 24px;
+            border-bottom: 4px solid var(--primary);
+        }
+
+        .header h1 {
+            font-family: "Georgia", "Times New Roman", serif;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            color: var(--primary);
+            font-size: 2.4rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .header .subtitle {
+            font-size: 0.85rem;
+            color: #999;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        /* ── Leaderboard table ── */
+        .leaderboard {
+            width: 100%;
+            max-width: 940px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            background: #fff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+
+        thead {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        thead th {
+            padding: 12px 8px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        thead th.name-header {
+            text-align: left;
+            padding-left: 14px;
+        }
+
+        /* PAR row */
+        tr.par-row td {
+            background: #0b5e40;
+            color: #fff;
+            font-weight: 800;
+            font-size: 0.78rem;
+            padding: 6px 8px;
+            text-align: center;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        tr.par-row td.par-label {
+            text-align: left;
+            padding-left: 14px;
+            letter-spacing: 1px;
+        }
+
+        tbody tr { transition: background 0.15s; }
+        tbody tr:nth-child(even) { background: var(--alt-bg); }
+        tbody tr:hover { background: #eaf5f0; }
+
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #eee;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 0.88rem;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        /* Player name column */
+        td.name-cell {
+            text-align: left;
+            font-weight: 700;
+            color: #1a1a1a;
+            padding-left: 14px;
+            padding-right: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Score colors */
+        .under-par { color: var(--negative); font-weight: 800; }
+        .over-par { color: #3cb043; font-weight: 800; }
+        .even-par { color: var(--text); font-weight: 700; }
+
+        /* Group separator */
+        tr.group-sep td {
+            border-top: 2px solid var(--border);
+        }
+
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.6rem; letter-spacing: 3px; }
+            thead th { padding: 10px 4px; font-size: 0.62rem; }
+            td { padding: 8px 4px; font-size: 0.75rem; }
+            td.name-cell { font-size: 0.72rem; padding-left: 8px; padding-right: 8px; }
+            .nav-dropdown { right: 0; left: 0; min-width: 0; }
+            .nav-dropdown a { padding: 14px 18px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="nav-menu-wrapper">
+        <button class="menu-toggle" id="menuToggle" aria-label="Menu">☰</button>
+        <div class="nav-dropdown" id="navDropdown">
+            <a href="index.html">Home</a>
+            <a href="augusta.html">Augusta Style</a>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>The Masters</h1>
+        <div class="subtitle">Augusta Style Leaderboard</div>
+    </div>
+
+    <div class="leaderboard">
+        <table id="leaderboard-table">
+            <thead id="thead"></thead>
+            <tbody id="tbody"></tbody>
+        </table>
+    </div>
+
+    <script>
+    (function () {
+        var API_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard/401811941';
+        var augustaPars = [4, 5, 4, 3, 4, 3, 4, 5, 4, 4, 4, 3, 5, 4, 5, 3, 4, 4];
+
+        function parseScore(raw) {
+            if (raw === 'E' || raw === 'Even') return 0;
+            var n = parseInt(raw, 10);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function findCompetitors(obj, results) {
+            if (!obj || typeof obj !== 'object') return results;
+            if (obj.athlete && (obj.athlete.fullName || obj.athlete.displayName)) {
+                results.push(obj);
+            }
+            for (var key in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                    findCompetitors(obj[key], results);
+                }
+            }
+            return results;
+        }
+
+        function getOverallScore(a) {
+            if (!a.linescores || !a.linescores.length) return { num: 0, display: 'E' };
+            var total = 0;
+            var hasData = false;
+            for (var r = 0; r < a.linescores.length; r++) {
+                var dv = a.linescores[r].displayValue;
+                if (dv !== undefined && dv !== null && dv !== '') {
+                    total += parseScore(String(dv));
+                    hasData = true;
+                }
+            }
+            if (!hasData) return { num: 0, display: 'E' };
+            var display = total === 0 ? 'E' : (total > 0 ? '+' + total : String(total));
+            return { num: total, display: display };
+        }
+
+        function getLastName(fullName) {
+            var parts = fullName.split(' ');
+            return parts[parts.length - 1].toUpperCase();
+        }
+
+        // Get cumulative score-to-par through each hole across all rounds
+        function getCumulativeScores(athlete) {
+            var scores = [];
+            var cumulative = 0;
+            var linescores = athlete.linescores || [];
+
+            for (var r = 0; r < linescores.length; r++) {
+                var holes = linescores[r].linescores || [];
+                for (var h = 0; h < holes.length; h++) {
+                    if (!holes[h]) continue;
+                    var strokes = holes[h].value !== undefined ? holes[h].value : parseInt(holes[h].displayValue, 10);
+                    if (isNaN(strokes) || strokes <= 0) {
+                        scores.push(null); // hole not played yet
+                    } else {
+                        cumulative += strokes - augustaPars[h];
+                        scores.push(cumulative);
+                    }
+                }
+            }
+            return scores;
+        }
+
+        // Determine which holes have been played in the CURRENT round, return per-hole cumulative score
+        function getCurrentRoundHoleScores(athlete) {
+            var linescores = athlete.linescores || [];
+            // Find the latest round
+            var latestRound = -1;
+            for (var r = linescores.length - 1; r >= 0; r--) {
+                var holes = linescores[r].linescores || [];
+                for (var h = 0; h < holes.length; h++) {
+                    if (holes[h] && holes[h].value > 0) {
+                        latestRound = r;
+                        break;
+                    }
+                }
+                if (latestRound >= 0) break;
+            }
+
+            if (latestRound < 0) return new Array(18).fill(null);
+
+            // Calculate cumulative score-to-par across ALL rounds up to hole being checked
+            var result = new Array(18).fill(null);
+            var cumulativeBefore = 0;
+
+            // Sum completed prior rounds
+            for (var r = 0; r < latestRound; r++) {
+                var dv = linescores[r].displayValue;
+                if (dv !== undefined && dv !== null && dv !== '') {
+                    cumulativeBefore += parseScore(String(dv));
+                }
+            }
+
+            // Current round hole by hole
+            var currentHoles = linescores[latestRound].linescores || [];
+            var runningTotal = cumulativeBefore;
+            for (var h = 0; h < 18; h++) {
+                if (h < currentHoles.length && currentHoles[h]) {
+                    var strokes = currentHoles[h].value !== undefined ? currentHoles[h].value : parseInt(currentHoles[h].displayValue, 10);
+                    if (!isNaN(strokes) && strokes > 0) {
+                        runningTotal += strokes - augustaPars[h];
+                        result[h] = runningTotal;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        function buildBoard(athletes) {
+            var thead = document.getElementById('thead');
+            var tbody = document.getElementById('tbody');
+
+            // Build header row
+            var holeRow = '<tr>';
+            holeRow += '<th class="name-header">Hole</th>';
+            for (var h = 1; h <= 18; h++) {
+                holeRow += '<th>' + h + '</th>';
+            }
+            holeRow += '</tr>';
+
+            thead.innerHTML = holeRow;
+
+            // Build PAR row
+            var parHtml = '<tr class="par-row">';
+            parHtml += '<td class="par-label">Par</td>';
+            for (var h = 0; h < 18; h++) {
+                parHtml += '<td>' + augustaPars[h] + '</td>';
+            }
+            parHtml += '</tr>';
+
+            // Build player rows
+            var html = parHtml;
+            var prevScore = null;
+
+            for (var i = 0; i < athletes.length; i++) {
+                var a = athletes[i];
+                var overall = getOverallScore(a);
+                var holeScores = getCurrentRoundHoleScores(a);
+
+                var sepClass = '';
+                if (prevScore !== null && overall.num !== prevScore) {
+                    sepClass = ' class="group-sep"';
+                }
+                prevScore = overall.num;
+
+                html += '<tr' + sepClass + '>';
+
+                // Player name
+                html += '<td class="name-cell">' + escapeHtml(getLastName(a.name)) + '</td>';
+
+                // 18 hole scores
+                for (var h = 0; h < 18; h++) {
+                    var val = holeScores[h];
+                    if (val === null) {
+                        html += '<td></td>';
+                    } else {
+                        var cls = 'even-par';
+                        var display = val;
+                        if (val < 0) {
+                            cls = 'under-par';
+                            display = Math.abs(val);
+                        } else if (val > 0) {
+                            cls = 'over-par';
+                            display = val;
+                        } else {
+                            display = 0;
+                        }
+                        html += '<td class="' + cls + '">' + display + '</td>';
+                    }
+                }
+
+                html += '</tr>';
+            }
+
+            tbody.innerHTML = html;
+        }
+
+        function escapeHtml(str) {
+            var d = document.createElement('div');
+            d.appendChild(document.createTextNode(str));
+            return d.innerHTML;
+        }
+
+        function load() {
+            var cbName = '_espnCB_' + Date.now();
+            window[cbName] = function (data) {
+                delete window[cbName];
+                document.body.removeChild(script);
+                processData(data);
+            };
+            var script = document.createElement('script');
+            script.src = API_URL + '?callback=' + cbName;
+            script.onerror = function () {
+                document.getElementById('tbody').innerHTML =
+                    '<tr><td colspan="19" style="padding:20px;color:#999;">Failed to load data.</td></tr>';
+            };
+            document.body.appendChild(script);
+        }
+
+        function processData(data) {
+            try {
+                var raw = findCompetitors(data, []);
+                if (!raw.length) throw new Error('No competitors found');
+
+                var unique = new Map();
+                raw.forEach(function (c) {
+                    var a = c.athlete;
+                    var name = a.fullName || a.displayName;
+                    if (unique.has(name)) return;
+
+                    var scoreRaw = c.score;
+                    var started = scoreRaw !== null && scoreRaw !== undefined && scoreRaw !== '';
+                    var lsVal = c.linescores && c.linescores[0] && c.linescores[0].value;
+                    var onCourse = started && lsVal !== undefined && lsVal > 0;
+
+                    unique.set(name, {
+                        name: name,
+                        scoreNum: parseScore(started ? scoreRaw : 'E'),
+                        onCourse: onCourse,
+                        linescores: c.linescores || []
+                    });
+                });
+
+                var all = Array.from(unique.values());
+
+                // Sort by overall score (lowest first), take top 10
+                var started = all.filter(function (a) { return a.onCourse; });
+                started.sort(function (a, b) { return getOverallScore(a).num - getOverallScore(b).num; });
+                var top10 = started.slice(0, 10);
+
+                buildBoard(top10);
+            } catch (e) {
+                document.getElementById('tbody').innerHTML =
+                    '<tr><td colspan="19" style="padding:20px;color:#999;">Error: ' + e.message + '</td></tr>';
+            }
+        }
+
+        load();
+    })();
+
+    // Nav menu
+    (function () {
+        var menuToggle = document.getElementById('menuToggle');
+        var navDropdown = document.getElementById('navDropdown');
+        menuToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            navDropdown.classList.toggle('open');
+        });
+        document.addEventListener('click', function (e) {
+            if (!navDropdown.contains(e.target) && e.target !== menuToggle) {
+                navDropdown.classList.remove('open');
+            }
+        });
+    })();
+    </script>
+</body>
+</html>
